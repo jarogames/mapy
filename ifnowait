@@ -1,0 +1,22 @@
+#!/bin/bash
+#while inotifywait -e close_write  map.png; do mpv map.png ; done
+
+
+   #!/bin/bash
+
+### Set initial time of file
+LTIME=`stat -c %Z $HOME/Maps/map.png`
+
+while true    
+do
+   ATIME=`stat -c %Z $HOME/Maps/map.png`
+
+   if [[ "$ATIME" != "$LTIME" ]]
+   then    
+       echo "RUN COMMNAD"
+       mpv -vo drm $HOME/Maps/map.png
+       LTIME=$ATIME
+   fi
+   sleep 0.1
+done
+
