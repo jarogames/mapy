@@ -1,24 +1,40 @@
 #!/usr/bin/env python3
+##### gpspipe 
 import subprocess
-import pandas as pd
+
 import random
 import time 
 from math import floor
+#######  MAIN THING - but my fork is necessary #####
 from staticmap import StaticMap, CircleMarker, Line
+
+############ i dont know
 from IPython.core.display import Image, display
 import numpy
-
-
+### PIL for printing on png file
 from PIL import Image
 from PIL import ImageFont
 from PIL import ImageDraw
 
+################ TK to display
 import tkinter
 from PIL import Image, ImageTk
 
-
-
+################ very nice options parser
 from optparse import OptionParser
+
+
+############### read .csv and search for vilages
+import pandas as pd
+from math import sqrt,cos,pi,floor
+def get_dist(lon2, lat2, lon1, lat1):
+    R = 6378  #// radius of the earth in km
+    x = (lon2 - lon1)/180*pi* cos( 0.5*(lat2+lat1) /180*pi)
+    y = (lat2 - lat1)/180*pi
+    d = R * sqrt( x*x + y*y )
+    return floor(d*10)/10
+df1=pd.read_csv("souradnice2.csv")
+df1.columns=['city','y','x']
 
 zoom=18
 IMX=650
@@ -142,6 +158,16 @@ def loop():
         if (fix=="+"):
             dx=XCoor-lastXY[0]
             dy=YCoor-lastXY[1]
+            i=(   (df1['y']-ynput)**2+(df1['x']-xnput)**2 ).argsort()[0] 
+            j=(   (df1['y']-ynput)**2+(df1['x']-xnput)**2 ).argsort()[1] 
+            k=(   (df1['y']-ynput)**2+(df1['x']-xnput)**2 ).argsort()[2]
+            idi=get_dist(xnput,ynput,df1.ix[i]['x'],df1.ix[i]['y'] )
+            idj=get_dist(xnput,ynput,df1.ix[i]['x'],df1.ix[i]['y'] )
+            idk=get_dist(xnput,ynput,df1.ix[i]['x'],df1.ix[i]['y'] )
+            print(df1.ix[i]['city'], idi )
+#            print(df1.ix[j]['city'], get_dist(xnput,ynput,df1.ix[j]['x'],df1.ix[j]['y'] ) )
+#            print(df1.ix[k]['city'], get_dist(xnput,ynput,df1.ix[k]['x'],df1.ix[k]['y'] ) )
+
 #            print('last', (lastXY[0],lastXY[1]), 'white', 5 )
 #            mam= CircleMarker( (lastXY[0],lastXY[1]), 'white', 5) 
 #            m1.add_marker(mam, maxmarkers=maxmarkers )
@@ -153,18 +179,24 @@ def loop():
         image=m1.render()
 
         draw = ImageDraw.Draw(image, 'RGBA')
-        font = ImageFont.truetype("Ubuntu-B.ttf", 22)
+        font   = ImageFont.truetype("Ubuntu-B.ttf", 22)
+        font16 = ImageFont.truetype("Ubuntu-B.ttf", 16)
+        ##### SPEED
         draw.rectangle( [(5, 5),(120,30)] ,  (255, 255, 255, 120)  )
-        draw.text((5, 5),"{:.1f}".format(speed*1.852)+' km/h',(0,0,0), font=font)
-
+        draw.text((5, 5),"{:4.1f}".format(speed*1.852)+' km/h',(0,0,0), font=font)
+        ##### Altitude
         draw.rectangle( [(5, IMY-22),(120,IMY)] ,  (0, 0, 0, 80)  )
-        draw.text((5, IMY-22),str(Alti)+' m',(255,255,255), font=font)
-
+        draw.text((5, IMY-22),"{:4.0f} m".format(Alti),(255,255,255), font=font)
+        ##### HEADING
         draw.rectangle( [(IMX-125, 5),(IMX,30)] ,  (0, 0, 0, 80)  )
-        draw.text((IMX-125, 5),str(course)+' dg',(255,255,255), font=font)
-
+        draw.text((IMX-125, 5),"{:3.0f}".format(course),(255,255,255), font=font)
+        ##### TIME
         draw.rectangle( [(IMX-155, IMY-22),(IMX,IMY)] ,  (0, 0, 0, 80)  )
         draw.text((IMX-155, IMY-22), timex ,(255,255,255), font=font)
+        ##### position
+        draw.rectangle( [(IMX-155, IMY-22),(IMX,IMY)] ,  (0, 0, 0, 80)  )
+        draw.text((IMX-155, IMY-22), "{} {} km".format(df1.ix[i]['city'],idi)
+                  ,(255,255,255), font=font16)
 
         image=image.resize( (IMX*2,IMY*2) )
         image.save('map.png')
