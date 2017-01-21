@@ -37,8 +37,8 @@ df1=pd.read_csv("souradnice2.csv")
 df1.columns=['city','y','x']
 
 zoom=18
-IMX=650
-IMY=350
+IMX=650*2
+IMY=350*2
 
 parser = OptionParser()
 
@@ -47,7 +47,9 @@ parser.add_option("-x", "--width", dest="IMX", type="int",
 parser.add_option("-y", "--height", dest="IMY",type="int",
                   help="")
 parser.add_option("-z", "--zoom", dest="zoom",type="int",
-                  help="")
+                  help="use zoom 11 and 15 only, 16,17,18 a.tile.osm")
+parser.add_option("-c", "--city", dest="city",action="store_true",
+                  default=False,  help="display city")
 
 parser.add_option("-q", "--quiet",
                   action="store_false", dest="verbose", default=True,
@@ -58,7 +60,10 @@ print(options)
 if options.IMX!=None: IMX=options.IMX
 if options.IMY!=None: IMY=options.IMY
 if options.zoom!=None: zoom=options.zoom
+print(options.city)
 print(IMX,IMY)
+IMX,IMY=(int(IMX/2),int(IMY/2))
+
 
 ###### tinker stuff
 root = tkinter.Tk()
@@ -105,7 +110,7 @@ def loop():
         try:
             course=float(course)
         except:
-            course=None
+            course=0.0
     #-------- fix--------------------
     if (lin.find('GPGSA')>0):
         if (float(lin.split(',')[2])>1):
@@ -121,7 +126,7 @@ def loop():
         Alti= lin.split(',')[9]
         try:
             Alti=float(Alti)
-            Alti="{:5.1f}".format(Alti)
+            #Alti="{:5.1f}".format(Alti)
         except:
             Alti=0.
         try:
@@ -158,15 +163,15 @@ def loop():
         if (fix=="+"):
             dx=XCoor-lastXY[0]
             dy=YCoor-lastXY[1]
-            i=(   (df1['y']-ynput)**2+(df1['x']-xnput)**2 ).argsort()[0] 
-            j=(   (df1['y']-ynput)**2+(df1['x']-xnput)**2 ).argsort()[1] 
-            k=(   (df1['y']-ynput)**2+(df1['x']-xnput)**2 ).argsort()[2]
-            idi=get_dist(xnput,ynput,df1.ix[i]['x'],df1.ix[i]['y'] )
-            idj=get_dist(xnput,ynput,df1.ix[i]['x'],df1.ix[i]['y'] )
-            idk=get_dist(xnput,ynput,df1.ix[i]['x'],df1.ix[i]['y'] )
-            print(df1.ix[i]['city'], idi )
-#            print(df1.ix[j]['city'], get_dist(xnput,ynput,df1.ix[j]['x'],df1.ix[j]['y'] ) )
-#            print(df1.ix[k]['city'], get_dist(xnput,ynput,df1.ix[k]['x'],df1.ix[k]['y'] ) )
+            i=(   (df1['y']-YCoor)**2+(df1['x']-XCoor)**2 ).argsort()[0] 
+            j=(   (df1['y']-YCoor)**2+(df1['x']-XCoor)**2 ).argsort()[1] 
+            k=(   (df1['y']-YCoor)**2+(df1['x']-XCoor)**2 ).argsort()[2]
+            idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
+            idj=get_dist(XCoor,YCoor,df1.ix[j]['x'],df1.ix[j]['y'] )
+            idk=get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] )
+            #print(df1.ix[i]['city'], idi )
+#            print(df1.ix[j]['city'], get_dist(XCoor,YCoor,df1.ix[j]['x'],df1.ix[j]['y'] ) )
+#            print(df1.ix[k]['city'], get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] ) )
 
 #            print('last', (lastXY[0],lastXY[1]), 'white', 5 )
 #            mam= CircleMarker( (lastXY[0],lastXY[1]), 'white', 5) 
@@ -184,22 +189,26 @@ def loop():
         ##### SPEED
         draw.rectangle( [(5, 5),(120,30)] ,  (255, 255, 255, 120)  )
         draw.text((5, 5),"{:4.1f}".format(speed*1.852)+' km/h',(0,0,0), font=font)
-        ##### Altitude
-        draw.rectangle( [(5, IMY-22),(120,IMY)] ,  (0, 0, 0, 80)  )
-        draw.text((5, IMY-22),"{:4.0f} m".format(Alti),(255,255,255), font=font)
         ##### HEADING
-        draw.rectangle( [(IMX-125, 5),(IMX,30)] ,  (0, 0, 0, 80)  )
-        draw.text((IMX-125, 5),"{:3.0f}".format(course),(255,255,255), font=font)
+        draw.rectangle( [(IMX-50, 0),(IMX,30)] ,  (0, 0, 0, 80)  )
+        draw.text((IMX-50, 0),"{:3.0f}".format(course),(255,255,255), font=font)
+        ##### Altitude
+        draw.rectangle( [(0, IMY-20),(90,IMY)] ,  (0, 0, 0, 80)  )
+        draw.text((0, IMY-22),"{:5.0f} m".format(Alti),(255,255,255), font=font)
         ##### TIME
-        draw.rectangle( [(IMX-155, IMY-22),(IMX,IMY)] ,  (0, 0, 0, 80)  )
-        draw.text((IMX-155, IMY-22), timex ,(255,255,255), font=font)
+        draw.rectangle( [(IMX-160, IMY-20),(IMX,IMY)] ,  (0, 0, 0, 80)  )
+        draw.text((IMX-160, IMY-22), timex ,(255,255,255), font=font)
+
         ##### position
-        draw.rectangle( [(IMX-155, IMY-22),(IMX,IMY)] ,  (0, 0, 0, 80)  )
-        draw.text((IMX-155, IMY-22), "{} {} km".format(df1.ix[i]['city'],idi)
-                  ,(255,255,255), font=font16)
+        if (options.city):
+            try:
+                draw.rectangle( [(0, IMY-40),(IMX,IMY-24)] ,  (0, 0, 0, 80)  )
+                draw.text((0, IMY-42), "{} {},     {} {}".format(df1.ix[i]['city'],idi,df1.ix[j]['city'],idj),(255,255,255), font=font16)
+            except:
+                print('city error')
 
         image=image.resize( (IMX*2,IMY*2) )
-        image.save('map.png')
+        #image.save('map.png')
         tkimg[0] = ImageTk.PhotoImage(image)
         label.config(image=tkimg[0])
 
