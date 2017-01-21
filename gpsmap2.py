@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
 ##### gpspipe 
 import subprocess
-
+#
+#http://download.geonames.org/export/dump/
+# cat cities15000.txt | grep -i europe |  awk -F '\t' '{print $15",\""$2"\","$5","$6",_"$9"_"}' | sort -nr  > souradniceEU.csv
+#
+#
 import random
 import time 
-from math import floor
+from math import floor,cos,sin
 #######  MAIN THING - but my fork is necessary #####
 from staticmap import StaticMap, CircleMarker, Line
 
@@ -26,15 +30,29 @@ from optparse import OptionParser
 
 ############### read .csv and search for vilages
 import pandas as pd
-from math import sqrt,cos,pi,floor
+from math import sqrt,cos,pi,floor,asin,radians
 def get_dist(lon2, lat2, lon1, lat1):
-    R = 6378  #// radius of the earth in km
-    x = (lon2 - lon1)/180*pi* cos( 0.5*(lat2+lat1) /180*pi)
-    y = (lat2 - lat1)/180*pi
-    d = R * sqrt( x*x + y*y )
-    return floor(d*10)/10
-df1=pd.read_csv("souradnice2.csv")
-df1.columns=['city','y','x']
+#def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points 
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians 
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    # haversine formula 
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a)) 
+    r = 6371 # Radius of earth in kilometers. Use 3956 for miles
+    return floor( 10 *c * r)/10
+#    print('-------getdist:',lon2, lat2, lon1, lat1)
+#    R = 6378  #// radius of the earth in km
+#    x = (lon2 - lon1)/180*pi* cos( 0.5*(lat2+lat1) /180*pi)
+#    y = (lat2 - lat1)/180*pi
+#    d = R * sqrt( x*x + y*y )
+#    return floor(d*10)/10
+
 
 zoom=18
 IMX=650*2
@@ -48,8 +66,10 @@ parser.add_option("-y", "--height", dest="IMY",type="int",
                   help="")
 parser.add_option("-z", "--zoom", dest="zoom",type="int",
                   help="use zoom 11 and 15 only, 16,17,18 a.tile.osm")
-parser.add_option("-c", "--city", dest="city",action="store_true",
-                  default=False,  help="display city")
+#parser.add_option("-c", "--city", dest="city",action="store_true",
+#                  default=False,  help="display city")
+parser.add_option("-c", "--city", dest="city", 
+                  default=False,  help="display city from country CZ,FR,DE,IT,FR100,DE100,IT100,CZ15,CZ100")
 
 parser.add_option("-q", "--quiet",
                   action="store_false", dest="verbose", default=True,
@@ -60,6 +80,37 @@ print(options)
 if options.IMX!=None: IMX=options.IMX
 if options.IMY!=None: IMY=options.IMY
 if options.zoom!=None: zoom=options.zoom
+
+if options.city=="CZ":
+    df1=pd.read_csv("souradnice2.csv")
+    df1.columns=['city','y','x']
+if options.city=="FR":
+    df1=pd.read_csv("souradniceFR.csv")
+    df1.columns=['people','city','y','x','c']
+if options.city=="DE":
+    df1=pd.read_csv("souradniceDE.csv")
+    df1.columns=['people','city','y','x','c']
+if options.city=="IT":
+    df1=pd.read_csv("souradniceIT.csv")
+    df1.columns=['people','city','y','x','c']
+
+if options.city=="CZ100":
+    df1=pd.read_csv("souradniceCZ100k.csv")
+    df1.columns=['people','city','y','x','c']
+if options.city=="CZ15":
+    df1=pd.read_csv("souradniceCZ.csv")
+    df1.columns=['people','city','y','x','c']
+if options.city=="FR100":
+    df1=pd.read_csv("souradniceFR100k.csv")
+    df1.columns=['people','city','y','x','c']
+if options.city=="DE100":
+    df1=pd.read_csv("souradniceDE100k.csv")
+    df1.columns=['people','city','y','x','c']
+if options.city=="IT100":
+    df1=pd.read_csv("souradniceIT100k.csv")
+    df1.columns=['people','city','y','x','c']
+
+
 print(options.city)
 print(IMX,IMY)
 IMX,IMY=(int(IMX/2),int(IMY/2))
@@ -144,7 +195,7 @@ def loop():
             XCooS=0.
             YCooS=0.
             XCoor,YCoor=(0 +0.004*random.random(),0+0.004*random.random())
-        timex=tim[0:2]+':'+tim[2:4]+':'+tim[4:8]+' UTC'
+        timex=tim[0:2]+':'+tim[2:4]+':'+tim[4:6]+' UTC'
         print( fix, timex+' {:6.5f} {:6.5f}'.format( XCoor,YCoor ), speed, Alti, course )
         redraw=1  # HERE I DEFINE REDRAW
 
@@ -159,28 +210,23 @@ def loop():
 
         mam= CircleMarker( (XCoor,YCoor), color, 5) 
         m1.add_marker(mam, maxmarkers=maxmarkers )
-
-        if (fix=="+"):
+        if fix=="+":  # first touch crashes
+            try:
+                print( 'correction cos',YCoor/180,cos(pi*YCoor/180) )
+                crf=cos(pi*YCoor/180)
+#                print( 'correction cos',cos(YCoor/180*pi) )
+                i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0] 
+                j=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[1] 
+                k=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[2]
+                idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
+                idj=get_dist(XCoor,YCoor,df1.ix[j]['x'],df1.ix[j]['y'] )
+                idk=get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] )
+            except:
+                print("")
             dx=XCoor-lastXY[0]
             dy=YCoor-lastXY[1]
-            i=(   (df1['y']-YCoor)**2+(df1['x']-XCoor)**2 ).argsort()[0] 
-            j=(   (df1['y']-YCoor)**2+(df1['x']-XCoor)**2 ).argsort()[1] 
-            k=(   (df1['y']-YCoor)**2+(df1['x']-XCoor)**2 ).argsort()[2]
-            idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
-            idj=get_dist(XCoor,YCoor,df1.ix[j]['x'],df1.ix[j]['y'] )
-            idk=get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] )
-            #print(df1.ix[i]['city'], idi )
-#            print(df1.ix[j]['city'], get_dist(XCoor,YCoor,df1.ix[j]['x'],df1.ix[j]['y'] ) )
-#            print(df1.ix[k]['city'], get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] ) )
-
-#            print('last', (lastXY[0],lastXY[1]), 'white', 5 )
-#            mam= CircleMarker( (lastXY[0],lastXY[1]), 'white', 5) 
-#            m1.add_marker(mam, maxmarkers=maxmarkers )
-
-#            print(  (XCoor+dx*14,YCoor+dy*14), 'white', 3 )
-            mam= CircleMarker( (XCoor+dx*maxmarkers,YCoor+dy*maxmarkers), 'magenta', 1) 
+            mam= CircleMarker( (XCoor+dx*maxmarkers/2,YCoor+dy*maxmarkers/2), 'magenta', 1) 
             m1.add_marker(mam, maxmarkers=maxmarkers )
-        print('goint to render',fix)
         image=m1.render()
 
         draw = ImageDraw.Draw(image, 'RGBA')
@@ -196,14 +242,14 @@ def loop():
         draw.rectangle( [(0, IMY-20),(90,IMY)] ,  (0, 0, 0, 80)  )
         draw.text((0, IMY-22),"{:5.0f} m".format(Alti),(255,255,255), font=font)
         ##### TIME
-        draw.rectangle( [(IMX-160, IMY-20),(IMX,IMY)] ,  (0, 0, 0, 80)  )
-        draw.text((IMX-160, IMY-22), timex ,(255,255,255), font=font)
+        draw.rectangle( [(IMX-140, IMY-20),(IMX,IMY)] ,  (0, 0, 0, 80)  )
+        draw.text((IMX-140, IMY-22), timex ,(255,255,255), font=font)
 
         ##### position
         if (options.city):
             try:
                 draw.rectangle( [(0, IMY-40),(IMX,IMY-24)] ,  (0, 0, 0, 80)  )
-                draw.text((0, IMY-42), "{} {},     {} {}".format(df1.ix[i]['city'],idi,df1.ix[j]['city'],idj),(255,255,255), font=font16)
+                draw.text((0, IMY-42), "{} {},     {} {},    {} {}".format(df1.ix[i]['city'],idi,df1.ix[j]['city'],idj,df1.ix[k]['city'],idk),(255,255,255), font=font16)
             except:
                 print('city error')
 
