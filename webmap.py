@@ -7,6 +7,8 @@ import cgi
 import time
 
 import urllib.request #python3 version   of   urllib
+import os
+os.chdir("/home/ojr/Maps")
 
 PORT_NUMBER = 8900
 
@@ -57,7 +59,12 @@ class myHandler(BaseHTTPRequestHandler):
 				else:
 					print('....file doesnot exist ########################################')
 					whatiwo=self.path
-					url='http://a.tile.komoot.de/komoot-2'+whatiwo
+					if int( whatiwo.split('/')[1])>15:
+						url='http://a.tile.osm.org'+whatiwo
+#print("ZOOM=",whatiwo.split('/')[1])
+					else:
+						#url='http://a.tile.osm.org'
+						url='http://a.tile.komoot.de/komoot-2'+whatiwo
 					makedir=os.path.dirname(self.path)
 					print('url=',url,'creating dir=', curdir+makedir)
 					if not os.path.exists(curdir+makedir):
