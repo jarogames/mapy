@@ -212,7 +212,7 @@ def loop():
         m1.add_marker(mam, maxmarkers=maxmarkers )
         if fix=="+":  # first touch crashes
             try:
-                print( 'correction cos',YCoor/180,cos(pi*YCoor/180) )
+                #print( 'correction cos',YCoor/180,cos(pi*YCoor/180) )
                 crf=cos(pi*YCoor/180)
 #                print( 'correction cos',cos(YCoor/180*pi) )
                 i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0] 
