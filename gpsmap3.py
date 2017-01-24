@@ -362,10 +362,10 @@ def loop():
                     idk=get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] )
                 except:
                     crf=0;print("pandas ijk badly")
-                    dx=XCoor-lastXY[0]
-                    dy=YCoor-lastXY[1]
-                    mam= CircleMarker( (XCoor+dx*maxmarkers/2,YCoor+dy*maxmarkers/2), 'magenta', 1) 
-                    m1.add_marker(mam, maxmarkers=maxmarkers )
+                dx=XCoor-lastXY[0]
+                dy=YCoor-lastXY[1]
+                mam= CircleMarker( (XCoor+dx*maxmarkers/2,YCoor+dy*maxmarkers/2), 'magenta', 2) 
+                m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG", "m11 render ")
             image=m1.render()
             
