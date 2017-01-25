@@ -339,7 +339,7 @@ def loop():
         if DEBUG: print('DEBUG redraw==', redraw)
 
         if (redraw==1):
-            print("DEBUG redraw==1 part of loop")
+            if DEBUG:print("DEBUG redraw==1 part of loop")
             mmaxm=maxmarkers
             if zoom<15:
                 maxmarkers=(15-zoom)*maxmarkers
@@ -352,9 +352,12 @@ def loop():
             m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG",fix,"corrections")
             if fix=="+":  # first touch crashes
+                if ( abs(YCoor)<90):
+                    crf=cos(pi*YCoor/180)
+                else:
+                    crf=1.
                 try:
                     #print( 'correction cos',YCoor/180,cos(pi*YCoor/180) )
-                    crf=cos(pi*YCoor/180)
                     #                print( 'correction cos',cos(YCoor/180*pi) )
                     i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0] 
                     j=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[1] 
@@ -363,13 +366,16 @@ def loop():
                     idj=get_dist(XCoor,YCoor,df1.ix[j]['x'],df1.ix[j]['y'] )
                     idk=get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] )
                 except:
-                    crf=0;print("pandas ijk badly")
+                    print("pandas ijk badly")
                 dx=XCoor-lastXY[0]
                 dy=YCoor-lastXY[1]
-                r=sqrt(dx*dx*crf*crf+dy*dy)
-                dx=dx/r  *0.0001/2 # ok for 15
-                dy=dy/r * 0.0001/2
-                mam= CircleMarker( (XCoor+dx*maxmarkers/2,YCoor+dy*maxmarkers/2), 'magenta', 5) 
+                lastXY=(XCoor, YCoor);
+
+                r=0.002
+                dx=r*sin(course/180*pi)
+                dy=r*cos(course/180*pi)
+                print("DEBUG {:.5f}  {:.5}  {:.5f}".format(dx,dy,r))
+                mam= CircleMarker( (XCoor+dx,YCoor+dy), 'magenta', 5) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG", "m11 render ")
             image=m1.render()
@@ -409,11 +415,11 @@ def loop():
             #time.sleep(0.1)
             mam= CircleMarker( (XCoor,YCoor),  'orange', 5) 
             m1.add_marker( mam, maxmarkers=maxmarkers )
-            lastXY=(XCoor, YCoor);
+#            lastXY=(XCoor, YCoor);
             redraw=0
         ####### here i am after redraw.    
             maxmarkers=mmaxm
-            print('DEBUG endofloop')
+            if DEBUG: print('DEBUG endofloop')
 
 
         ################################################ONE DATA
