@@ -4,7 +4,7 @@
 ################# socket
 import socket
 import sys
-
+from math import sqrt
 DEBUG=False
 #read one line from the socket
 def buffered_readLine(socket):
@@ -341,12 +341,14 @@ def loop():
         if (redraw==1):
             print("DEBUG redraw==1 part of loop")
             mmaxm=maxmarkers
+            if zoom<15:
+                maxmarkers=(15-zoom)*maxmarkers
             if (abs(XCoor)<0.005 and abs(YCoor)<0.005):
                 maxmarkers=2
             color='black'
             if fix=="+": color='red'
                
-            mam= CircleMarker( (XCoor,YCoor), color, 5) 
+            mam= CircleMarker( (XCoor,YCoor), color, 6) 
             m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG",fix,"corrections")
             if fix=="+":  # first touch crashes
@@ -364,11 +366,14 @@ def loop():
                     crf=0;print("pandas ijk badly")
                 dx=XCoor-lastXY[0]
                 dy=YCoor-lastXY[1]
-                mam= CircleMarker( (XCoor+dx*maxmarkers/2,YCoor+dy*maxmarkers/2), 'magenta', 2) 
+                r=sqrt(dx*dx*crf*crf+dy*dy)
+                dx=dx/r  *0.0001/2 # ok for 15
+                dy=dy/r * 0.0001/2
+                mam= CircleMarker( (XCoor+dx*maxmarkers/2,YCoor+dy*maxmarkers/2), 'magenta', 5) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG", "m11 render ")
             image=m1.render()
-            
+            m1.remove_last_marker()
             if DEBUG: print("DEBUG", "i want to draw now")
             draw = ImageDraw.Draw(image, 'RGBA')
             font   = ImageFont.truetype("Ubuntu-B.ttf", 22)
