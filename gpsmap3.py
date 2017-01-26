@@ -2,9 +2,34 @@
 ################ gpspipe 
 #import subprocess
 ################# socket
+#
+#        EU   BIGCIT   smallCIT   streetS
+#  zooms 5      8       12         15
+#  EUROPE
+# 5:   ./mkmap.pl 5 -15 65.2  5 5 > a.png
+#   CZ
+# 8:   ./mkmap.pl 8 10 51.2  7 4 > a.png                   [15:28:32]
+# DE
+# 8:   ./mkmap.pl 8 5 51.2  7 5 > a.png
+# FR nord
+#./mkmap.pl 8 -5 51.2  10 5 > a.png
+# FR TOT
+#./mkmap.pl 8 -5 51.2  10 11 > a.png
+# EU
+#./mkmap.pl 8 -5 51.2  20 15 > a.png
+#12:  PRAGUE
+#  ./mkmap.pl 12 14 50.2  8 4 > a.png
+# CZ ALL 
+#./mkmap.pl 12 12.30 51.1  73 46 > a.png
+#SEVERNI FR
+# ./mkmap.pl 12 -0.7 50.0 83 25  > a.png
+#
+#
+zoomset=[5,8,12,15]
+
 import socket
 import sys
-from math import sqrt
+from math import sqrt, atan2
 DEBUG=False
 #read one line from the socket
 def buffered_readLine(socket):
@@ -72,13 +97,24 @@ def get_dist(lon2, lat2, lon1, lat1):
     c = 2 * asin(sqrt(a)) 
     r = 6371 # Radius of earth in kilometers. Use 3956 for miles
     return floor( 10 *c * r)/10
-#    print('-------getdist:',lon2, lat2, lon1, lat1)
-#    R = 6378  #// radius of the earth in km
-#    x = (lon2 - lon1)/180*pi* cos( 0.5*(lat2+lat1) /180*pi)
-#    y = (lat2 - lat1)/180*pi
-#    d = R * sqrt( x*x + y*y )
-#    return floor(d*10)/10
 
+
+def get_course( lon1, lat1, lon2, lat2):
+#def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points 
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians 
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    # haversine formula 
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1
+#    rad=atan2(dlat*cos(lat2), dlon) / pi * 180
+    rad=atan2(dlon*cos(lat2), dlat) / pi * 180
+    if rad<0:
+        rad=rad+360
+    return int(rad)
 
 
 
@@ -156,6 +192,13 @@ def get_GPGGA(lin,a,x,y,r):
 
 
 
+
+
+
+
+
+
+
 ################################################
 #
 #
@@ -164,12 +207,67 @@ def get_GPGGA(lin,a,x,y,r):
 ##
 ##################################################
 
-
-
-
 zoom=15
 IMX=650*2
 IMY=350*2
+
+
+def gps_text(image,pos,text):
+    print("DEBUG","entered gettext")
+    global IMX
+    global IMY
+    draw = ImageDraw.Draw(image, 'RGBA')
+    font22   = ImageFont.truetype("Ubuntu-B.ttf", 22)
+    font14 = ImageFont.truetype("Ubuntu-B.ttf", 14)
+    font=font22
+    if isinstance(pos, str):
+        font=font22
+    else:
+        font=font14
+    w, h = draw.textsize(text, font)
+    posi=(1,1)
+    print("DEBUG",'isinstantce str ')
+    if isinstance(pos, str):
+        print('str')
+        if (pos=='lt'):
+            posi=(1,1)
+        if (pos=='lb'):
+            posi=(1,IMY-h)
+        if (pos=='rt'):
+            posi=(IMX-w-2,1)
+        if (pos=='rb'):
+            posi=(IMX-w-2,IMY-h)
+    else:
+        print("DEBUG",text,'course to ',pos)
+        tox=IMX/2+sin(pos/180*pi)*IMX/2.3
+        toy=IMY/2-cos(pos/180*pi)*IMY/2.1
+        posi=( int(tox-w/2), int(toy-h/2) )
+#        if ( sin(pos)>=0):
+#            tox=tox-w
+#        if (cos(pos)>0):
+#            toy=toy-h
+#        posi=( int(tox), int(toy) )
+         
+    print('120=', w,h, posi, IMX,IMY)
+    posf=( posi[0]+w , posi[1]+h )
+    whitefog=(255, 255, 255, 110)
+    blackfog=(0, 0, 0, 80)
+    white=(255,255,255)
+    black=(0,0,0)
+    ##### SPEED
+    #text="{:4.1f}".format(speed*1.852)+' km/h'
+    if (pos=='lt'):
+        bcol=whitefog
+        fcol=black
+    else:
+        bcol=blackfog
+        fcol=white
+    draw.rectangle( [posi,posf] , bcol )
+    draw.text( posi,text,         fcol , font=font)
+
+
+
+    
 
 print("\n\n ./gpsmap3.py -x 620 -y 310 -z 15 -c CZ\n ./gpsmap3.py -x 1320 -y 710 -z 15 -c CZ ")
 parser = OptionParser()
@@ -239,7 +337,8 @@ tkimg = [None]  # This, or something like it, is necessary because if you do not
 delay = 500   # in milliseconds
 #img = Image.new('1', (100, 100), 0)
 
-m1 = StaticMap( IMX,IMY, url_template='http://localhost:8900/{z}/{x}/{y}.png',fixzoom=zoom)
+#m1 = StaticMap( IMX,IMY, url_template='http://localhost:8900/{z}/{x}/{y}.png',fixzoom=zoom)
+m1 = StaticMap( IMX,IMY, url_template='http://localhost:8900/{z}/{x}/{y}.png')
 
 maxmarkers=25*2 ## because the forward arrow
 
@@ -367,45 +466,102 @@ def loop():
                     idk=get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] )
                 except:
                     print("pandas ijk badly")
-                dx=XCoor-lastXY[0]
-                dy=YCoor-lastXY[1]
                 lastXY=(XCoor, YCoor);
 
                 r=0.002
-                dx=r*sin(course/180*pi)
+                dx=r*sin(course/180*pi)/crf
                 dy=r*cos(course/180*pi)
-                print("DEBUG {:.5f}  {:.5}  {:.5f}".format(dx,dy,r))
+                if DEBUG:print("DEBUG {:.5f}  {:.5}  {:.5f}".format(dx,dy,r))
                 mam= CircleMarker( (XCoor+dx,YCoor+dy), 'magenta', 5) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG", "m11 render ")
-            image=m1.render()
+            mapproblem=0
+            try:
+                image=m1.render(zoom=zoom, center=(XCoor,YCoor))
+            except:
+                print('maps with zoom=',zoom,'not found')
+                mapproblem=1
+            if mapproblem>0:
+                mapproblem=0
+                try:
+                    image=m1.render(zoom=12)
+                except:
+                    mapproblem=1
+                    print('maps with zoom=',12,'not found')
+            if mapproblem>0:
+                mapproblem=0
+                try:
+                    image=m1.render(zoom=8)
+                except:
+                    mapproblem=1
+                    print('maps with zoom=',8,'not found')
+            if mapproblem>0:
+                mapproblem=0
+                try:
+                    image=m1.render(zoom=5)
+                except:
+                    mapproblem=1
+                    print('maps with zoom=',5,'not found')
             m1.remove_last_marker()
             if DEBUG: print("DEBUG", "i want to draw now")
             draw = ImageDraw.Draw(image, 'RGBA')
             font   = ImageFont.truetype("Ubuntu-B.ttf", 22)
             font16 = ImageFont.truetype("Ubuntu-B.ttf", 16)
             ##### SPEED
-            draw.rectangle( [(5, 5),(120,30)] ,  (255, 255, 255, 120)  )
-            draw.text((5, 5),"{:4.1f}".format(speed*1.852)+' km/h',(0,0,0), font=font)
+            gps_text(image,'lt',"{:4.1f}".format(speed*1.852)+' km/h')
+#            draw.rectangle( [(5, 5),(120,30)] ,  (255, 255, 255, 120)  )
+#            draw.text((5, 5),"{:4.1f}".format(speed*1.852)+' km/h',(0,0,0), font=font)
             ##### HEADING
-            draw.rectangle( [(IMX-50, 0),(IMX,30)] ,  (0, 0, 0, 80)  )
-            draw.text((IMX-50, 0),"{:3.0f}".format(course),(255,255,255), font=font)
+            gps_text(image,'rt',"{:3.0f}".format(course))
+#            draw.rectangle( [(IMX-50, 0),(IMX,30)] ,  (0, 0, 0, 80)  )
+#            draw.text((IMX-50, 0),"{:3.0f}".format(course),(255,255,255), font=font)
             ##### Altitude
-            draw.rectangle( [(0, IMY-20),(90,IMY)] ,  (0, 0, 0, 80)  )
-            draw.text((0, IMY-22),"{:5.0f} m".format(Alti),(255,255,255), font=font)
+            gps_text(image,'lb',"{:5.0f} m".format(Alti))
+#            draw.rectangle( [(0, IMY-20),(90,IMY)] ,  (0, 0, 0, 80)  )
+#            draw.text((0, IMY-22),"{:5.0f} m".format(Alti),(255,255,255), font=font)
             ##### TIME
-            draw.rectangle( [(IMX-140, IMY-20),(IMX,IMY)] ,  (0, 0, 0, 80)  )
-            draw.text((IMX-140, IMY-22), timex ,(255,255,255), font=font)
-            
-            ##### position
-            if (options.city):
-                try:
-                    draw.rectangle( [(0, IMY-40),(IMX,IMY-24)] ,  (0, 0, 0, 80)  )
-                    draw.text((0, IMY-42), "{} {},     {} {},    {} {}".format(df1.ix[i]['city'],idi,df1.ix[j]['city'],idj,df1.ix[k]['city'],idk),(255,255,255), font=font16)
-                except:
-                    #print('DEBUG city error')
-                    abcd=1
-                    
+            gps_text(image,'rb',timex)
+            if not(df1 is  None):
+                print('------------------------ on id')
+                #print(df1)
+                if ( abs(YCoor)<90):
+                    crf=cos(pi*YCoor/180)
+
+                i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0]
+                print(crf,'crf',i,'i')
+                idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
+                print(crf,'crf',i,'i', 'idi===',idi)
+                cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
+                print('coure',cour)
+                gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi))
+
+                i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[1]
+                print(crf,'crf',i,'i')
+                idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
+                print(crf,'crf',i,'i', 'idi===',idi)
+                cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
+                print('coure',cour)
+                gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi))
+
+                i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[2]
+                print(crf,'crf',i,'i')
+                idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
+                print(crf,'crf',i,'i', 'idi===',idi)
+                cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
+                print('coure',cour)
+                gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi))
+
+#            draw.rectangle( [(IMX-140, IMY-20),(IMX,IMY)] ,  (0, 0, 0, 80)  )
+#            draw.text((IMX-140, IMY-22), timex ,(255,255,255), font=font)
+
+#            ##### position
+#            if (options.city):
+#                try:
+#                    draw.rectangle( [(0, IMY-40),(IMX,IMY-24)] ,  (0, 0, 0, 80)  )
+#                    draw.text((0, IMY-42), "{} {},     {} {},    {} {}".format(df1.ix[i]['city'],idi,df1.ix[j]['city'],idj,df1.ix[k]['city'],idk),(255,255,255), font=font16)
+#                except:
+#                    #print('DEBUG city error')
+#                    abcd=1
             image=image.resize( (IMX*2,IMY*2) )
             #image.save('map.png')
             tkimg[0] = ImageTk.PhotoImage(image)

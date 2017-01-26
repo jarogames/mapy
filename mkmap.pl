@@ -6,7 +6,23 @@
 use strict;
 use LWP;
 use GD;
+use Math::Trig;
 
+sub lon_to_x{
+    my($lon, $zoom)=@_;
+    return (($lon + 180.) / 360) * (2** $zoom);
+}
+
+sub lat_to_y{
+     my $pi=3.1415926;
+     my($lat, $zoom)=@_;
+     return (1 - log(tan($lat * $pi / 180) + 1 / cos($lat * $pi / 180)) / $pi) / 2 * (2** $zoom);
+}
+sub round{
+    my $float=shift;
+    my $rounded = int($float + $float/abs($float*2));
+    return $rounded;
+}
 my ($zoom,$startx,$starty,$nx,$ny);
 my $REMO=0;
 if ($#ARGV==5){
@@ -28,10 +44,13 @@ if ($#ARGV!=4){
     exit;
 }else{
     ($zoom,$startx,$starty,$nx,$ny)=@ARGV;
-    if (($zoom!=11)&&($zoom!=15)){
-	print("zoom only 11 or 15\n");
-	exit;
-    }
+    $startx=round(lon_to_x($startx, $zoom));
+    $starty=round(lat_to_y($starty,$zoom));
+    print STDERR "tiles: $startx  $starty\n";
+#    if (($zoom!=11)&&($zoom!=15)){
+#	print("zoom only 11 or 15\n");
+#	exit;
+#    }
 	
     #print("$zoom,$startx,$starty,$nx,$ny\n");
 }
