@@ -239,7 +239,7 @@ def gps_text(image,pos,text):
             posi=(IMX-w-2,IMY-h)
     else:
         print("DEBUG",text,'course to ',pos)
-        tox=IMX/2+sin(pos/180*pi)*IMX/2.3
+        tox=IMX/2+sin(pos/180*pi)*IMX/2.5
         toy=IMY/2-cos(pos/180*pi)*IMY/2.1
         posi=( int(tox-w/2), int(toy-h/2) )
 #        if ( sin(pos)>=0):
@@ -256,7 +256,7 @@ def gps_text(image,pos,text):
     black=(0,0,0)
     ##### SPEED
     #text="{:4.1f}".format(speed*1.852)+' km/h'
-    if (pos=='lt'):
+    if (pos=='lt')or(pos=='lb'):
         bcol=whitefog
         fcol=black
     else:
@@ -340,7 +340,7 @@ delay = 500   # in milliseconds
 #m1 = StaticMap( IMX,IMY, url_template='http://localhost:8900/{z}/{x}/{y}.png',fixzoom=zoom)
 m1 = StaticMap( IMX,IMY, url_template='http://localhost:8900/{z}/{x}/{y}.png')
 
-maxmarkers=25*2 ## because the forward arrow
+maxmarkers=4*25*2 ## because the forward arrow
 
 redraw=0
 once=0
@@ -468,11 +468,15 @@ def loop():
                     print("pandas ijk badly")
                 lastXY=(XCoor, YCoor);
 
-                r=0.002
+                r=0.002* (16-zoom)**2
                 dx=r*sin(course/180*pi)/crf
                 dy=r*cos(course/180*pi)
                 if DEBUG:print("DEBUG {:.5f}  {:.5}  {:.5f}".format(dx,dy,r))
-                mam= CircleMarker( (XCoor+dx,YCoor+dy), 'magenta', 5) 
+                mam= CircleMarker( (XCoor+dx,YCoor+dy), 'green', 9) 
+                m1.add_marker(mam, maxmarkers=maxmarkers )
+                mam= CircleMarker( (XCoor+dx*1.1,YCoor+dy*1.1), 'green', 6) 
+                m1.add_marker(mam, maxmarkers=maxmarkers )
+                mam= CircleMarker( (XCoor+dx*1.2,YCoor+dy*1.2), 'green', 4) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG", "m11 render ")
             mapproblem=0
@@ -503,6 +507,8 @@ def loop():
                     mapproblem=1
                     print('maps with zoom=',5,'not found')
             m1.remove_last_marker()
+            m1.remove_last_marker()
+            m1.remove_last_marker()
             if DEBUG: print("DEBUG", "i want to draw now")
             draw = ImageDraw.Draw(image, 'RGBA')
             font   = ImageFont.truetype("Ubuntu-B.ttf", 22)
@@ -521,7 +527,7 @@ def loop():
 #            draw.text((0, IMY-22),"{:5.0f} m".format(Alti),(255,255,255), font=font)
             ##### TIME
             gps_text(image,'rb',timex)
-            if not(df1 is  None):
+            if options.city and not(df1 is  None):
                 print('------------------------ on id')
                 #print(df1)
                 if ( abs(YCoor)<90):
