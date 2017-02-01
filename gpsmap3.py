@@ -212,7 +212,7 @@ IMX=650*2
 IMY=350*2
 
 
-def gps_text(image,pos,text):
+def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
     print("DEBUG","entered gettext")
     global IMX
     global IMY
@@ -228,7 +228,7 @@ def gps_text(image,pos,text):
     posi=(1,1)
     print("DEBUG",'isinstantce str ')
     if isinstance(pos, str):
-        print('str')
+        print('str ...', pos)
         if (pos=='lt'):
             posi=(1,1)
         if (pos=='lb'):
@@ -238,30 +238,43 @@ def gps_text(image,pos,text):
         if (pos=='rb'):
             posi=(IMX-w-2,IMY-h)
     else:
-        print("DEBUG",text,'course to ',pos)
-        tox=IMX/2+sin(pos/180*pi)*IMX/2.5
-        toy=IMY/2-cos(pos/180*pi)*IMY/2.1
-        posi=( int(tox-w/2), int(toy-h/2) )
+        if DEBUG: print("DEBUG",text,'course to ',pos)
+        tox=IMX/2+sin(pos/180*pi)*IMX/2*radius
+        toy=IMY/2-cos(pos/180*pi)*IMY/2*radius
+        # shift the tox toy
+        tox=int(tox-w/2)
+        toy=int(toy-h/2)
+        if (tox+w)>IMX: tox=IMX-w-1
+        if (tox)<0:   tox=1
+        if (toy+h)>IMY: tox=IMY-h-1
+        if (toy)<0:   toy=1
 #        if ( sin(pos)>=0):
 #            tox=tox-w
 #        if (cos(pos)>0):
 #            toy=toy-h
 #        posi=( int(tox), int(toy) )
+        posi=( tox, toy )
          
-    print('120=', w,h, posi, IMX,IMY)
+    if DEBUG: print('DEBUG','120=', w,h, posi, IMX,IMY)
     posf=( posi[0]+w , posi[1]+h )
     whitefog=(255, 255, 255, 110)
     blackfog=(0, 0, 0, 80)
+    redfog=(255,0,0,  80)
+    greenfog=(0,255,0,  80)
     white=(255,255,255)
     black=(0,0,0)
+    red=(255,0,0)
+    green=(0,255,0)
     ##### SPEED
     #text="{:4.1f}".format(speed*1.852)+' km/h'
-    if (pos=='lt')or(pos=='lb'):
-        bcol=whitefog
-        fcol=black
-    else:
-        bcol=blackfog
-        fcol=white
+    if fg=='black': fcol=black
+    if fg=='white': fcol=white
+    if fg=='red':   fcol=red
+    if fg=='green': fcol=green
+    if bg=='black': bcol=blackfog
+    if bg=='white': bcol=whitefog
+    if bg=='red':   bcol=redfog
+    if bg=='green': bcol=greenfog
     draw.rectangle( [posi,posf] , bcol )
     draw.text( posi,text,         fcol , font=font)
 
@@ -282,6 +295,8 @@ parser.add_option("-z", "--zoom", dest="zoom",type="int",
 #                  default=False,  help="display city")
 parser.add_option("-c", "--city", dest="city", 
                   default=False,  help="display city from country CZ,FR,DE,IT,FR100,DE100,IT100,CZ15,CZ100")
+parser.add_option("-t", "--target", dest="target", 
+                  default=False,  help="display target from file")
 
 parser.add_option("-q", "--quiet",
                   action="store_false", dest="verbose", default=True,
@@ -294,33 +309,37 @@ if options.IMY!=None: IMY=options.IMY
 if options.zoom!=None: zoom=options.zoom
 
 if options.city=="CZ":
-    df1=pd.read_csv("souradnice2.csv")
+    df1=pd.read_csv("souradnice2.csv",header=None)
     df1.columns=['city','y','x']
 if options.city=="FR":
-    df1=pd.read_csv("souradniceFR.csv")
+    df1=pd.read_csv("souradniceFR.csv",header=None)
     df1.columns=['people','city','y','x','c']
 if options.city=="DE":
-    df1=pd.read_csv("souradniceDE.csv")
+    df1=pd.read_csv("souradniceDE.csv",header=None)
     df1.columns=['people','city','y','x','c']
 if options.city=="IT":
-    df1=pd.read_csv("souradniceIT.csv")
+    df1=pd.read_csv("souradniceIT.csv",header=None)
     df1.columns=['people','city','y','x','c']
 
 if options.city=="CZ100":
-    df1=pd.read_csv("souradniceCZ100k.csv")
+    df1=pd.read_csv("souradniceCZ100k.csv",header=None)
     df1.columns=['people','city','y','x','c']
 if options.city=="CZ15":
-    df1=pd.read_csv("souradniceCZ.csv")
+    df1=pd.read_csv("souradniceCZ.csv",header=None)
     df1.columns=['people','city','y','x','c']
 if options.city=="FR100":
-    df1=pd.read_csv("souradniceFR100k.csv")
+    df1=pd.read_csv("souradniceFR100k.csv",header=None)
     df1.columns=['people','city','y','x','c']
 if options.city=="DE100":
-    df1=pd.read_csv("souradniceDE100k.csv")
+    df1=pd.read_csv("souradniceDE100k.csv",header=None)
     df1.columns=['people','city','y','x','c']
 if options.city=="IT100":
-    df1=pd.read_csv("souradniceIT100k.csv")
+    df1=pd.read_csv("souradniceIT100k.csv",header=None)
     df1.columns=['people','city','y','x','c']
+
+if options.target!="":
+    dfT=pd.read_csv( options.target ,header=None)
+    dfT.columns=['city','y','x']
 
 
 print(options.city)
@@ -455,17 +474,17 @@ def loop():
                     crf=cos(pi*YCoor/180)
                 else:
                     crf=1.
-                try:
+                #try:
                     #print( 'correction cos',YCoor/180,cos(pi*YCoor/180) )
                     #                print( 'correction cos',cos(YCoor/180*pi) )
-                    i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0] 
-                    j=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[1] 
-                    k=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[2]
-                    idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
-                    idj=get_dist(XCoor,YCoor,df1.ix[j]['x'],df1.ix[j]['y'] )
-                    idk=get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] )
-                except:
-                    print("pandas ijk badly")
+                    #i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0] 
+                    #j=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[1] 
+                    #k=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[2]
+                    #idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
+                    #idj=get_dist(XCoor,YCoor,df1.ix[j]['x'],df1.ix[j]['y'] )
+                    #idk=get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] )
+                #except:
+                print( "COOR==",XCoor, YCoor )
                 lastXY=(XCoor, YCoor);
 
                 r=0.002* (16-zoom)**2
@@ -527,6 +546,23 @@ def loop():
 #            draw.text((0, IMY-22),"{:5.0f} m".format(Alti),(255,255,255), font=font)
             ##### TIME
             gps_text(image,'rb',timex)
+            #########################################
+            if options.target and not(dfT is  None):
+                print('------------------------ on TGT')
+                if ( abs(YCoor)<90):
+                    crf=cos(pi*YCoor/180)
+
+                #i=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort[0]
+                i=0
+                #print(crf,'Tcrf',i,'i')
+                idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
+                print(crf,'Tcrf',i,'=i', 'idi===',idi)
+                cour=get_course(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'])
+                print('Tcourse',cour)
+                rad=1.0
+                if idi<0.5:rad=idi*2
+                gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='red',radius=rad)
+                
             if options.city and not(df1 is  None):
                 print('------------------------ on id')
                 #print(df1)
@@ -534,28 +570,34 @@ def loop():
                     crf=cos(pi*YCoor/180)
 
                 i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0]
-                print(crf,'crf',i,'i')
+                #print(crf,'crf',i,'i')
                 idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
-                print(crf,'crf',i,'i', 'idi===',idi)
+                rad=1.
+                if idi<0.5: rad=idi*2
+                #print(crf,'crf',i,'i', 'idi===',idi)
                 cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
-                print('coure',cour)
-                gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi))
+                #print('course',cour)
+                gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi),fg='white', bg='black',radius=rad)
 
                 i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[1]
-                print(crf,'crf',i,'i')
+                #print(crf,'crf',i,'i')
                 idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
-                print(crf,'crf',i,'i', 'idi===',idi)
+                rad=1.0
+                if idi<0.5: rad=idi*2
+                #print(crf,'crf',i,'i', 'idi===',idi)
                 cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
-                print('coure',cour)
-                gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi))
+                #print('course',cour)
+                gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi),fg='white', bg='black',radius=rad)
 
                 i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[2]
-                print(crf,'crf',i,'i')
+                #print(crf,'crf',i,'i')
                 idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
-                print(crf,'crf',i,'i', 'idi===',idi)
+                rad=1.
+                if idi<0.5: rad=idi*2
+                #print(crf,'crf',i,'i', 'idi===',idi)
                 cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
-                print('coure',cour)
-                gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi))
+                #print('course',cour)
+                gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi),fg='white', bg='black',radius=rad)
 
 #            draw.rectangle( [(IMX-140, IMY-20),(IMX,IMY)] ,  (0, 0, 0, 80)  )
 #            draw.text((IMX-140, IMY-22), timex ,(255,255,255), font=font)
