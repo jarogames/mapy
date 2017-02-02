@@ -303,6 +303,8 @@ parser.add_option("-c", "--city", dest="city",
                   default=False,  help="display city from country CZ,FR,DE,IT,FR100,DE100,IT100,CZ15,CZ100")
 parser.add_option("-t", "--target", dest="target", 
                   default=False,  help="display target from file")
+parser.add_option("-T", "--reverse_target", dest="targetrev", 
+                  default=False,  help="display target from file")
 
 parser.add_option("-q", "--quiet",
                   action="store_false", dest="verbose", default=True,
@@ -348,10 +350,19 @@ if options.city=="IT100":
 
 dfT=None
 WPOINT=0
+if options.targetrev!=False:
+    options.target=options.targetrev
+    print('REVERSED TARGET')
 if options.target!=False:
     print("TARGET DEFINED", options.target)
     dfT=pd.read_csv( options.target ,header=None)
     dfT.columns=['city','y','x']
+    print('NORMALORDER dfT',dfT)
+
+if options.targetrev!=False:
+    dfT=dfT.iloc[::-1]
+    dfT=dfT.reset_index(drop=True)
+    print('REVERSING dfT',dfT)
 
 
 print(options.city)
