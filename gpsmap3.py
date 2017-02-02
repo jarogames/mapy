@@ -31,6 +31,9 @@ import socket
 import sys
 from math import sqrt, atan2
 DEBUG=False
+
+
+########################################### SOCKET FUNCTION #######################
 #read one line from the socket
 def buffered_readLine(socket):
     global DEBUG
@@ -48,16 +51,11 @@ def buffered_readLine(socket):
         elif part == "\n":
             break
     return line
-#
-#http://download.geonames.org/export/dump/
-# cat cities15000.txt | grep -i europe |  awk -F '\t' '{print $15",\""$2"\","$5","$6",_"$9"_"}' | sort -nr  > souradniceEU.csv
-#
+
 #
 import random
 import time 
 from math import floor,cos,sin
-
-
 
 #######  MAIN THING - but my fork is necessary #####
 from staticmap import StaticMap, CircleMarker, Line
@@ -76,7 +74,6 @@ from PIL import Image, ImageTk
 
 ################ very nice options parser
 from optparse import OptionParser
-
 
 ############### read .csv and search for vilages
 import pandas as pd
@@ -192,7 +189,14 @@ def get_GPGGA(lin,a,x,y,r):
 
 
 
+    
 
+def newwaypoint(WPOINT):
+    if options.target!=False:
+        f=open(options.target+'.log', 'w+')
+        f.write(dfT.ix[WPOINT]['city'],',',dfT.ix[WPOINT]['y'],',',dfT.ix[WPOINT]['x'],',',timex)
+        f.close()
+    return WPOINT+1
 
 
 
@@ -310,6 +314,9 @@ if options.IMX!=None: IMX=options.IMX
 if options.IMY!=None: IMY=options.IMY
 if options.zoom!=None: zoom=options.zoom
 
+############################################### CITIES  CSV:
+#http://download.geonames.org/export/dump/
+# cat cities15000.txt | grep -i europe |  awk -F '\t' '{print $15",\""$2"\","$5","$6",_"$9"_"}' | sort -nr  > souradniceEU.csv
 if options.city=="CZ":
     df1=pd.read_csv("souradnice2.csv",header=None)
     df1.columns=['city','y','x']
@@ -361,7 +368,9 @@ tkimg = [None]  # This, or something like it, is necessary because if you do not
 delay = 500   # in milliseconds
 #img = Image.new('1', (100, 100), 0)
 
-#m1 = StaticMap( IMX,IMY, url_template='http://localhost:8900/{z}/{x}/{y}.png',fixzoom=zoom)
+
+
+
 m1 = StaticMap( IMX,IMY, url_template='http://localhost:8900/{z}/{x}/{y}.png')
 
 maxmarkers=4*25*2 ## because the forward arrow
@@ -379,20 +388,14 @@ lastXY=(0,0)
 #############
 
 data="KILL"
-
-#task = subprocess.Popen(["/bin/sh",'-c', " stdbuf -i0 -o0  -e0 gpspipe -r"], stdout=subprocess.PIPE)
-
-
-
-
-
-fix='NOFIX'
 speed=0
 course=0
 timex='00:00:00 UTC'
 sock=None
 redraw=0  # just sometimes switch off
 fix="NOFIX"
+cloproach=10000  # closest approach for WPOINT
+################################################ LOOOOOOOOOOP ################
 def loop():
     global fix
     global maxmarkers
@@ -405,6 +408,7 @@ def loop():
     global redraw
     global DEBUG
     global WPOINT
+    global cloproach
 
 ####    course,speed=(0,0)
 #    fix="NOFIX"
@@ -530,16 +534,10 @@ def loop():
             font16 = ImageFont.truetype("Ubuntu-B.ttf", 16)
             ##### SPEED
             gps_text(image,'lt',"{:4.1f}".format(speed*1.852)+' km/h')
-#            draw.rectangle( [(5, 5),(120,30)] ,  (255, 255, 255, 120)  )
-#            draw.text((5, 5),"{:4.1f}".format(speed*1.852)+' km/h',(0,0,0), font=font)
             ##### HEADING
             gps_text(image,'rt',"{:3.0f}".format(course))
-#            draw.rectangle( [(IMX-50, 0),(IMX,30)] ,  (0, 0, 0, 80)  )
-#            draw.text((IMX-50, 0),"{:3.0f}".format(course),(255,255,255), font=font)
             ##### Altitude
             gps_text(image,'lb',"{:5.0f} m".format(Alti))
-#            draw.rectangle( [(0, IMY-20),(90,IMY)] ,  (0, 0, 0, 80)  )
-#            draw.text((0, IMY-22),"{:5.0f} m".format(Alti),(255,255,255), font=font)
             ##### TIME
             gps_text(image,'rb',timex)
                 
@@ -578,13 +576,12 @@ def loop():
                 cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
                 #print('course',cour)
                 gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi),fg='white', bg='black',radius=rad)
-            ######################################### DFT   -1 
+############################################################ NAVIGATION ########################                
+            ######################################### DFT   -1 == LAST POSSIBLE WAYPOINT always there
+            if ( abs(YCoor)<90):
+                crf=cos(pi*YCoor/180)
             if options.target and not(dfT is  None) and len(dfT)>1:
                 if DEBUG:print('------------------------ on TGT -1')
-                if ( abs(YCoor)<90):
-                    crf=cos(pi*YCoor/180)
-
-                #i=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort[0]
                 i=len(dfT)-1
                 if DEBUG:print(crf,'-1Tcrf',i,'i')
                 idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
@@ -594,14 +591,14 @@ def loop():
                 rad=1.0
                 if idi<0.5:rad=idi*2
                 gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='green',radius=rad)
-            #print("before dfT WPOINT", WPOINT)
-            ######################################### DFT  WPOINT
+            ######################################### DFT  WPOINT == 1st/WPOINT(th) ON NEXT WAYPOINT
+            # 2 modes:  not clear what to use
+            #   1/when closer than 0.5km, NEXT;  /strict waypooint check/
+            #   2/OR when the next is closer,    /rather intentional waypoints/
+            #   1b/ closest approach +-1km...
+            #
             if options.target and not(dfT is  None) and (len(dfT)>WPOINT):
                 if DEBUG:print('------------------------ on TGT WPOINT')
-                if ( abs(YCoor)<90):
-                    crf=cos(pi*YCoor/180)
-
-                #i=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort[0]
                 i=WPOINT
                 print('WPOINT==',WPOINT,i,'==i', dfT.ix[i]['city'])
                 idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
@@ -611,23 +608,27 @@ def loop():
                 rad=0.8
                 if idi<0.5:
                     rad=idi*2
-                    if (len(dfT)>=WPOINT):
-                        WPOINT=WPOINT+1
-                        print("NEW WYPOINT", WPOINT)
                 gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='red',radius=rad)
-                
-#            draw.rectangle( [(IMX-140, IMY-20),(IMX,IMY)] ,  (0, 0, 0, 80)  )
-#            draw.text((IMX-140, IMY-22), timex ,(255,255,255), font=font)
+                ########### switch to new WPOINT
+                if idi<0.9:
+                    if (len(dfT)>=WPOINT) and (idi>cloproach):
+                        WPOINT=newwaypoint(WPOINT) # WPOINT=WPOINT+1 # I WANT WRITE HERE
+                        print("NEW WAYPOINT ON CLOSETS APPROACH", WPOINT, cloproach)
+                        cloproach=10000.
+                        idi=10000
+                ######### else just keep cloproach minimum
+                if idi<cloprach:  cloproach=idi ## refresh last value
+                ### in case of missed target or sleeping gps: ###################
+                if (len(dfT)>=WPOINT):
+                    idi2=get_dist( dfT.ix[i]['x'],dfT.ix[i]['y'], dfT.ix[i+1]['x'],dfT.ix[i+1]['y'] )
+                    if idi2<idi:
+                        WPOINT=WPOINT+1
+                        print("NEW WAYPOINT BY HALF DISTANCE", WPOINT, idi, idi2)
+                    if idi>cloproach*3:
+                        WPOINT=WPOINT+1
+                        print("NEW WAYPOINT BY TRIPLE CLOSEST APPROACH", WPOINT, idi, cloproach)
+#################################################################################################                 
 
-#            ##### position
-#            if (options.city):
-#                try:
-#                    draw.rectangle( [(0, IMY-40),(IMX,IMY-24)] ,  (0, 0, 0, 80)  )
-#                    draw.text((0, IMY-42), "{} {},     {} {},    {} {}".format(df1.ix[i]['city'],idi,df1.ix[j]['city'],idj,df1.ix[k]['city'],idk),(255,255,255), font=font16)
-#                except:
-#                    #print('DEBUG city error')
-#                    abcd=1
-#            print("after dfT WPOINT")
             image=image.resize( (IMX*2,IMY*2) )
             #image.save('map.png')
             tkimg[0] = ImageTk.PhotoImage(image)
@@ -655,27 +656,9 @@ def loop():
 
         
                 ###################################################
-#    finally:
-#        #root.update_idletasks()
-#        print( 'closing socket - finally')
-#        time.sleep(2)
-#        sock.close()
-#        sock=None
-#    print('DEBUG ending loop with data')
     root.update_idletasks()
     root.after( 2, loop )
 
-    #if data!="KILL":
-    #    return
-   
-    #line=task.stdout.readline()
-    #print('ITER',line)
-    #lin=line.decode('utf-8').rstrip()
-
-    #print('with', lin , ' redraw' )
-    # i save number of markers 
-
-    #root.mainloop() # should run in separate thread
 
 #neve happens
 loop()
