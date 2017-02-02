@@ -31,6 +31,7 @@ import socket
 import sys
 from math import sqrt, atan2
 DEBUG=False
+#DEBUG=True
 
 
 ########################################### SOCKET FUNCTION #######################
@@ -94,6 +95,7 @@ def get_dist(lon2, lat2, lon1, lat1):
     a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
     c = 2 * asin(sqrt(a)) 
     r = 6371 # Radius of earth in kilometers. Use 3956 for miles
+#    print('converted to radians')
     return floor( 10 *c * r)/10
 
 
@@ -192,9 +194,11 @@ def get_GPGGA(lin,a,x,y,r):
     
 
 def newwaypoint(WPOINT):
+    global timex
+    print('... newwaypoint',WPOINT)
     if options.target!=False:
-        f=open(options.target+'.log', 'w+')
-        f.write(dfT.ix[WPOINT]['city'],',',dfT.ix[WPOINT]['y'],',',dfT.ix[WPOINT]['x'],',',timex)
+        with open(options.target+'.log', 'a') as f:
+            f.write(dfT.ix[WPOINT]['city'],',',dfT.ix[WPOINT]['y'],',',dfT.ix[WPOINT]['x'],',',timex)
         f.close()
     return WPOINT+1
 
@@ -283,6 +287,7 @@ def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
     if bg=='green': bcol=greenfog
     draw.rectangle( [posi,posf] , bcol )
     draw.text( posi,text,         fcol , font=font)
+    if DEBUG: print('DEBUG','rectg and text ok')
 
 
 
@@ -397,7 +402,7 @@ lastXY=(0,0)
 #   starting Popen OR SOCKET
 #
 #############
-
+timex="00 00 00"
 data="KILL"
 speed=0
 course=0
@@ -408,6 +413,7 @@ fix="NOFIX"
 cloproach=10000  # closest approach for WPOINT
 ################################################ LOOOOOOOOOOP ################
 def loop():
+    global timex
     global fix
     global maxmarkers
     global tkimg
@@ -495,7 +501,7 @@ def loop():
                     crf=cos(pi*YCoor/180)
                 else:
                     crf=1.
-                print( "COOR==",XCoor, YCoor )
+                if DEBUG:print( "COOR==",XCoor, YCoor )
                 lastXY=(XCoor, YCoor);
 
                 r=0.002* (16-zoom)**2
@@ -553,7 +559,7 @@ def loop():
             gps_text(image,'rb',timex)
                 
             if options.city and not(df1 is  None):
-                print('------------------------ on id')
+                if DEBUG: print('------------------------ on id')
                 #print(df1)
                 if ( abs(YCoor)<90):
                     crf=cos(pi*YCoor/180)
@@ -609,7 +615,9 @@ def loop():
             #   1b/ closest approach +-1km...
             #
             if options.target and not(dfT is  None) and (len(dfT)>WPOINT):
+                
                 if DEBUG:print('------------------------ on TGT WPOINT')
+                WPOINT=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort()[0]
                 i=WPOINT
                 print('WPOINT==',WPOINT,i,'==i', dfT.ix[i]['city'])
                 idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
@@ -622,22 +630,26 @@ def loop():
                 gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='red',radius=rad)
                 ########### switch to new WPOINT
                 if idi<0.9:
-                    if (len(dfT)>=WPOINT) and (idi>cloproach):
+                    if  (idi>cloproach):
                         WPOINT=newwaypoint(WPOINT) # WPOINT=WPOINT+1 # I WANT WRITE HERE
-                        print("NEW WAYPOINT ON CLOSETS APPROACH", WPOINT, cloproach)
+#                        print("NEW WAYPOINT ON CLOSETS APPROACH", WPOINT, cloproach)
                         cloproach=10000.
                         idi=10000
-                ######### else just keep cloproach minimum
-                if idi<cloprach:  cloproach=idi ## refresh last value
+#                ######### else just keep cloproach minimum
+                if idi<cloproach:
+                    cloproach=idi ## refresh last value
+                    print('cloproach decreased')
                 ### in case of missed target or sleeping gps: ###################
-                if (len(dfT)>=WPOINT):
-                    idi2=get_dist( dfT.ix[i]['x'],dfT.ix[i]['y'], dfT.ix[i+1]['x'],dfT.ix[i+1]['y'] )
-                    if idi2<idi:
-                        WPOINT=WPOINT+1
-                        print("NEW WAYPOINT BY HALF DISTANCE", WPOINT, idi, idi2)
-                    if idi>cloproach*3:
-                        WPOINT=WPOINT+1
-                        print("NEW WAYPOINT BY TRIPLE CLOSEST APPROACH", WPOINT, idi, cloproach)
+#                if (len(dfT)>=WPOINT):
+#                    if DEBUG:print('searching idi2','WP==',i,WPOINT)
+#                    idi2=get_dist(XCoor,YCoor, dfT.ix[i+1]['x'],dfT.ix[i+1]['y'] )
+#                    print("IDI 2 is ",idi2,'IDI1 = ',idi)
+#                    if idi2<idi:
+#                        WPOINT=WPOINT+1
+#                        print("NEW WAYPOINT BY HALF DISTANCE", WPOINT, idi, idi2)
+#                    if idi>cloproach*1.5:
+#                        WPOINT=WPOINT+1
+#                        print("NEW WAYPOINT BY TRIPLE CLOSEST APPROACH", WPOINT, idi, cloproach)
 #################################################################################################                 
 
             image=image.resize( (IMX*2,IMY*2) )
