@@ -58,6 +58,7 @@ import time
 from math import floor,cos,sin
 
 
+
 #######  MAIN THING - but my fork is necessary #####
 from staticmap import StaticMap, CircleMarker, Line
 
@@ -213,7 +214,8 @@ IMY=350*2
 
 
 def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
-    print("DEBUG","entered gettext")
+    global DEBUG
+    if DEBUG:print("DEBUG","entered gettext")
     global IMX
     global IMY
     draw = ImageDraw.Draw(image, 'RGBA')
@@ -226,9 +228,9 @@ def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
         font=font14
     w, h = draw.textsize(text, font)
     posi=(1,1)
-    print("DEBUG",'isinstantce str ')
+    if DEBUG: print("DEBUG",'isinstantce str ')
     if isinstance(pos, str):
-        print('str ...', pos)
+        if DEBUG: print('str ...', pos)
         if (pos=='lt'):
             posi=(1,1)
         if (pos=='lb'):
@@ -246,7 +248,7 @@ def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
         toy=int(toy-h/2)
         if (tox+w)>IMX: tox=IMX-w-1
         if (tox)<0:   tox=1
-        if (toy+h)>IMY: tox=IMY-h-1
+        if (toy+h/2)>=IMY: toy=IMY-h/2
         if (toy)<0:   toy=1
 #        if ( sin(pos)>=0):
 #            tox=tox-w
@@ -258,9 +260,9 @@ def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
     if DEBUG: print('DEBUG','120=', w,h, posi, IMX,IMY)
     posf=( posi[0]+w , posi[1]+h )
     whitefog=(255, 255, 255, 110)
-    blackfog=(0, 0, 0, 80)
-    redfog=(255,0,0,  80)
-    greenfog=(0,255,0,  80)
+    blackfog=(0, 0, 0, 110)
+    redfog=(255,0,0,  110)
+    greenfog=(0,125,0,  110)
     white=(255,255,255)
     black=(0,0,0)
     red=(255,0,0)
@@ -337,7 +339,10 @@ if options.city=="IT100":
     df1=pd.read_csv("souradniceIT100k.csv",header=None)
     df1.columns=['people','city','y','x','c']
 
-if options.target!="":
+dfT=None
+WPOINT=0
+if options.target!=False:
+    print("TARGET DEFINED", options.target)
     dfT=pd.read_csv( options.target ,header=None)
     dfT.columns=['city','y','x']
 
@@ -399,6 +404,7 @@ def loop():
     global sock
     global redraw
     global DEBUG
+    global WPOINT
 
 ####    course,speed=(0,0)
 #    fix="NOFIX"
@@ -474,16 +480,6 @@ def loop():
                     crf=cos(pi*YCoor/180)
                 else:
                     crf=1.
-                #try:
-                    #print( 'correction cos',YCoor/180,cos(pi*YCoor/180) )
-                    #                print( 'correction cos',cos(YCoor/180*pi) )
-                    #i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0] 
-                    #j=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[1] 
-                    #k=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[2]
-                    #idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
-                    #idj=get_dist(XCoor,YCoor,df1.ix[j]['x'],df1.ix[j]['y'] )
-                    #idk=get_dist(XCoor,YCoor,df1.ix[k]['x'],df1.ix[k]['y'] )
-                #except:
                 print( "COOR==",XCoor, YCoor )
                 lastXY=(XCoor, YCoor);
 
@@ -546,22 +542,6 @@ def loop():
 #            draw.text((0, IMY-22),"{:5.0f} m".format(Alti),(255,255,255), font=font)
             ##### TIME
             gps_text(image,'rb',timex)
-            #########################################
-            if options.target and not(dfT is  None):
-                print('------------------------ on TGT')
-                if ( abs(YCoor)<90):
-                    crf=cos(pi*YCoor/180)
-
-                #i=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort[0]
-                i=0
-                #print(crf,'Tcrf',i,'i')
-                idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
-                print(crf,'Tcrf',i,'=i', 'idi===',idi)
-                cour=get_course(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'])
-                print('Tcourse',cour)
-                rad=1.0
-                if idi<0.5:rad=idi*2
-                gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='red',radius=rad)
                 
             if options.city and not(df1 is  None):
                 print('------------------------ on id')
@@ -598,7 +578,44 @@ def loop():
                 cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
                 #print('course',cour)
                 gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi),fg='white', bg='black',radius=rad)
+            ######################################### DFT   -1 
+            if options.target and not(dfT is  None) and len(dfT)>1:
+                if DEBUG:print('------------------------ on TGT -1')
+                if ( abs(YCoor)<90):
+                    crf=cos(pi*YCoor/180)
 
+                #i=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort[0]
+                i=len(dfT)-1
+                if DEBUG:print(crf,'-1Tcrf',i,'i')
+                idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
+                if DEBUG:print(crf,'-1Tcrf',i,'=i', 'idi===',idi)
+                cour=get_course(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'])
+                if DEBUG:print('-1Tcourse',cour)
+                rad=1.0
+                if idi<0.5:rad=idi*2
+                gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='green',radius=rad)
+            #print("before dfT WPOINT", WPOINT)
+            ######################################### DFT  WPOINT
+            if options.target and not(dfT is  None) and (len(dfT)>WPOINT):
+                if DEBUG:print('------------------------ on TGT WPOINT')
+                if ( abs(YCoor)<90):
+                    crf=cos(pi*YCoor/180)
+
+                #i=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort[0]
+                i=WPOINT
+                print('WPOINT==',WPOINT,i,'==i', dfT.ix[i]['city'])
+                idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
+                if DEBUG:print(crf,'Tcrf',i,'=i', 'idi===',idi)
+                cour=get_course(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'])
+                if DEBUG:print('Tcourse',cour)
+                rad=0.8
+                if idi<0.5:
+                    rad=idi*2
+                    if (len(dfT)>=WPOINT):
+                        WPOINT=WPOINT+1
+                        print("NEW WYPOINT", WPOINT)
+                gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='red',radius=rad)
+                
 #            draw.rectangle( [(IMX-140, IMY-20),(IMX,IMY)] ,  (0, 0, 0, 80)  )
 #            draw.text((IMX-140, IMY-22), timex ,(255,255,255), font=font)
 
@@ -610,6 +627,7 @@ def loop():
 #                except:
 #                    #print('DEBUG city error')
 #                    abcd=1
+#            print("after dfT WPOINT")
             image=image.resize( (IMX*2,IMY*2) )
             #image.save('map.png')
             tkimg[0] = ImageTk.PhotoImage(image)
