@@ -195,10 +195,15 @@ def get_GPGGA(lin,a,x,y,r):
 
 def newwaypoint(WPOINT):
     global timex
+    global dfT
     print('... newwaypoint',WPOINT)
     if options.target!=False:
+        print(" going to open")
         with open(options.target+'.log', 'a') as f:
-            f.write(dfT.ix[WPOINT]['city'],',',dfT.ix[WPOINT]['y'],',',dfT.ix[WPOINT]['x'],',',timex)
+            print("opened and gonna write",timex)
+#            f.write('ahoj'+timex+'\n')
+#            f.write(dfT.ix[WPOINT]['city'],',',dfT.ix[WPOINT]['y'],',',dfT.ix[WPOINT]['x'],',',timex)
+            f.write( str(dfT.ix[WPOINT]['city'])+','+str(dfT.ix[WPOINT]['y'])+','+str(dfT.ix[WPOINT]['x'])+','+timex+'\n')
         f.close()
     return WPOINT+1
 
@@ -413,6 +418,8 @@ fix="NOFIX"
 cloproach=10000  # closest approach for WPOINT
 ################################################ LOOOOOOOOOOP ################
 def loop():
+    global dfT
+    global df1
     global timex
     global fix
     global maxmarkers
@@ -619,7 +626,7 @@ def loop():
                 if DEBUG:print('------------------------ on TGT WPOINT')
                 WPOINT=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort()[0]
                 i=WPOINT
-                print('WPOINT==',WPOINT,i,'==i', dfT.ix[i]['city'])
+                if DEBUG:print('WPOINT==',WPOINT,i,'==i', dfT.ix[i]['city'])
                 idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
                 if DEBUG:print(crf,'Tcrf',i,'=i', 'idi===',idi)
                 cour=get_course(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'])
@@ -628,28 +635,39 @@ def loop():
                 if idi<0.5:
                     rad=idi*2
                 gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='red',radius=rad)
+                #WPOINT=newwaypoint(WPOINT) # WPOINT=WPOINT+1 # I WANT WRITE HERE
                 ########### switch to new WPOINT
                 if idi<0.9:
                     if  (idi>cloproach):
                         WPOINT=newwaypoint(WPOINT) # WPOINT=WPOINT+1 # I WANT WRITE HERE
-#                        print("NEW WAYPOINT ON CLOSETS APPROACH", WPOINT, cloproach)
+                        print("NEW WAYPOINT ON CLOSETS APPROACH", WPOINT, cloproach)
                         cloproach=10000.
                         idi=10000
+                        for ai in range(WPOINT-1,-1,-1):
+                            dfT.set_value( ai, 'x', 0)
+                            dfT.set_value( ai, 'y', 0)
 #                ######### else just keep cloproach minimum
                 if idi<cloproach:
                     cloproach=idi ## refresh last value
                     print('cloproach decreased')
                 ### in case of missed target or sleeping gps: ###################
-#                if (len(dfT)>=WPOINT):
+                if (len(dfT)>=WPOINT):
 #                    if DEBUG:print('searching idi2','WP==',i,WPOINT)
 #                    idi2=get_dist(XCoor,YCoor, dfT.ix[i+1]['x'],dfT.ix[i+1]['y'] )
 #                    print("IDI 2 is ",idi2,'IDI1 = ',idi)
 #                    if idi2<idi:
 #                        WPOINT=WPOINT+1
 #                        print("NEW WAYPOINT BY HALF DISTANCE", WPOINT, idi, idi2)
-#                    if idi>cloproach*1.5:
+                    if idi>cloproach*1.5:
 #                        WPOINT=WPOINT+1
-#                        print("NEW WAYPOINT BY TRIPLE CLOSEST APPROACH", WPOINT, idi, cloproach)
+                        print("NEW WAYPOINT BY 150% CLOSEST APPROACH", WPOINT, idi, cloproach)
+                        cloproach=10000.
+                        idi=10000
+                        WPOINT=WPOINT+1
+                        for ai in range(WPOINT-1,-1,-1):
+                            dfT.set_value( ai, 'x', 0)
+                            dfT.set_value( ai, 'y', 0)
+                        
 #################################################################################################                 
 
             image=image.resize( (IMX*2,IMY*2) )
