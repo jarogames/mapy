@@ -30,6 +30,8 @@ zoomset=[5,8,12,15]
 import socket
 import sys
 from math import sqrt, atan2
+import datetime # for timer
+
 DEBUG=False
 #DEBUG=True
 
@@ -201,9 +203,10 @@ def newwaypoint(WPOINT):
         print(" going to open")
         with open(options.target+'.log', 'a') as f:
             print("opened and gonna write",timex)
+            DELTA=datetime.datetime.now()-WPOINTIME
 #            f.write('ahoj'+timex+'\n')
 #            f.write(dfT.ix[WPOINT]['city'],',',dfT.ix[WPOINT]['y'],',',dfT.ix[WPOINT]['x'],',',timex)
-            f.write( str(dfT.ix[WPOINT]['city'])+','+str(dfT.ix[WPOINT]['y'])+','+str(dfT.ix[WPOINT]['x'])+','+timex+'\n')
+            f.write( str(dfT.ix[WPOINT]['city'])+','+str(dfT.ix[WPOINT]['y'])+','+str(dfT.ix[WPOINT]['x'])+','+timex+','+DELTA+'\n')
         f.close()
     return WPOINT+1
 
@@ -360,6 +363,7 @@ if options.city=="IT100":
 
 dfT=None
 WPOINT=0
+WPOINTIME=datetime.datetime.now()
 if options.targetrev!=False:
     options.target=options.targetrev
     print('REVERSED TARGET')
@@ -432,6 +436,7 @@ def loop():
     global redraw
     global DEBUG
     global WPOINT
+    global WPOINTIME
     global cloproach
 
 ####    course,speed=(0,0)
@@ -450,9 +455,9 @@ def loop():
         sock.connect(server_address)
         # Send data
         message = '?WATCH={"enable":true,"nmea":true}\n'
-        print( 'sending "%s"' % message)
+        #print( 'sending "%s"' % message)
         sock.sendall( str.encode(message) )
-        print('sent')
+        print('WATCH sent', end='\r')
     data=""
 #    print('DEBUG communicating sock .... ' )
     try:
@@ -487,7 +492,9 @@ def loop():
         if DEBUG: print("DEBUG","fix ok")
         Alti,XCoor,YCoor,redraw,timex=get_GPGGA(lin,Alti,XCoor,YCoor,redraw)
         if redraw==1:
-            print( fix, timex+' {:6.5f} {:6.5f}'.format( XCoor,YCoor ), speed, Alti, course )
+            DELTA=datetime.datetime.now()-WPOINTIME
+            print(' '+fix+timex+" {:6.4f} {:6.4f}/ {:4.1f} {:4.1f} {:4.1f} {}\r".format( XCoor,YCoor , speed, Alti, course, DELTA) ,end='\r')
+            #sys.stdout.flush()
         if DEBUG: print('DEBUG redraw==', redraw)
 
         if (redraw==1):
@@ -511,15 +518,15 @@ def loop():
                 if DEBUG:print( "COOR==",XCoor, YCoor )
                 lastXY=(XCoor, YCoor);
 
-                r=0.002* (16-zoom)**2
+                r=0.002* (16-zoom)**1.8
                 dx=r*sin(course/180*pi)/crf
                 dy=r*cos(course/180*pi)
                 if DEBUG:print("DEBUG {:.5f}  {:.5}  {:.5f}".format(dx,dy,r))
                 mam= CircleMarker( (XCoor+dx,YCoor+dy), 'green', 9) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
-                mam= CircleMarker( (XCoor+dx*1.1,YCoor+dy*1.1), 'green', 6) 
+                mam= CircleMarker( (XCoor+dx*1.07,YCoor+dy*1.07), 'green', 6) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
-                mam= CircleMarker( (XCoor+dx*1.2,YCoor+dy*1.2), 'green', 4) 
+                mam= CircleMarker( (XCoor+dx*1.12,YCoor+dy*1.12), 'green', 4) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG", "m11 render ")
             mapproblem=0
@@ -640,7 +647,9 @@ def loop():
                 if idi<0.9:
                     if  (idi>cloproach):
                         WPOINT=newwaypoint(WPOINT) # WPOINT=WPOINT+1 # I WANT WRITE HERE
-                        print("NEW WAYPOINT ON CLOSETS APPROACH", WPOINT, cloproach)
+                        DELTA=datetime.datetime.now()-WPOINTIME
+                        print("NEW WAYPOINT ON CLOSETS APPROACH", WPOINT, cloproach, DELTA)
+                        WPOINTIME=datetime.datetime.now()
                         cloproach=10000.
                         idi=10000
                         for ai in range(WPOINT-1,-1,-1):
@@ -649,7 +658,7 @@ def loop():
 #                ######### else just keep cloproach minimum
                 if idi<cloproach:
                     cloproach=idi ## refresh last value
-                    print('cloproach decreased')
+                    print('cloproach decreased {:5.1f} km    '.format( idi) )
                 ### in case of missed target or sleeping gps: ###################
                 if (len(dfT)>=WPOINT):
 #                    if DEBUG:print('searching idi2','WP==',i,WPOINT)
@@ -677,7 +686,7 @@ def loop():
             #root.update_idletasks()
             #root.after( 20, loop )
             #time.sleep(0.1)
-            mam= CircleMarker( (XCoor,YCoor),  'orange', 5) 
+            mam= CircleMarker( (XCoor,YCoor),  'orange', 6) 
             m1.add_marker( mam, maxmarkers=maxmarkers )
 #            lastXY=(XCoor, YCoor);
             redraw=0
