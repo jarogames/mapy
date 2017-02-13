@@ -25,7 +25,7 @@
 # ./mkmap.pl 12 -0.7 50.0 83 25  > a.png
 #
 #
-zoomset=[5,8,12,13,15]
+zoomset=[5,8,12,15]
 
 import socket
 import sys
@@ -247,8 +247,8 @@ def newwaypoint(WPOINT, WPOINTLEN):
 ##################################################
 
 zoom=15
-IMX=650*2
-IMY=350*2
+#IMX=int(650*resizeF) ## POZDEJI
+#IMY=int(350*resizeF)
 
 
 def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
@@ -326,9 +326,9 @@ def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
 print("\n\n ./gpsmap3.py -x 620 -y 310 -z 15 -c CZ\n ./gpsmap3.py -x 1320 -y 710 -z 15 -c CZ ")
 parser = OptionParser()
 
-parser.add_option("-x", "--width", dest="IMX", type="int",
+parser.add_option("-x", "--width", dest="IMX", type="int",default=800,
                   help="")
-parser.add_option("-y", "--height", dest="IMY",type="int",
+parser.add_option("-y", "--height", dest="IMY",type="int",default=600,
                   help="")
 parser.add_option("-z", "--zoom", dest="zoom",type="int",
                   help="use zoom 11 and 15 only, 16,17,18 a.tile.osm")
@@ -349,16 +349,23 @@ parser.add_option("-d", "--debug",
                   action="store_true", dest="debug", default=False,
                   help="debug messages")
 
-parser.add_option("-f", "--factorresize",  dest="factor", default=2,
+parser.add_option("-f", "--factorresize",  dest="factor", type='float',default=2,
                   help="resize factor ... usually 2")
 
 (options, args) = parser.parse_args()
 print(options)
+
+
 resizeF=float(options.factor)
 DEBUG=options.debug
-if options.IMX!=None: IMX=options.IMX
-if options.IMY!=None: IMY=options.IMY
+if options.IMX!=None: IMX=int(options.IMX/resizeF)
+if options.IMY!=None: IMY=int(options.IMY/resizeF)
+IMX=int(options.IMX/resizeF)
+IMY=int(options.IMY/resizeF)
+print('X Y:',IMX,IMY)
 if options.zoom!=None: zoom=options.zoom
+
+
 
 ############################################### CITIES  CSV:
 #http://download.geonames.org/export/dump/
@@ -418,8 +425,8 @@ WPOINTLEN=0
 WPOINT=newwaypoint(WPOINT, WPOINTLEN)
 
 print(options.city)
-print(IMX,IMY)
-IMX,IMY=(int(IMX/2),int(IMY/2))
+#print(IMX,IMY)
+#IMX,IMY=(int(IMX/2),int(IMY/2))
 
 
 

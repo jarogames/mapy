@@ -25,7 +25,7 @@
 # ./mkmap.pl 12 -0.7 50.0 83 25  > a.png
 #
 #
-zoomset=[5,8,12,13,15]
+zoomset=[5,8,12,15]
 
 import socket
 import sys
@@ -247,8 +247,8 @@ def newwaypoint(WPOINT, WPOINTLEN):
 ##################################################
 
 zoom=15
-IMX=650*2
-IMY=350*2
+#IMX=int(650*resizeF) ## POZDEJI
+#IMY=int(350*resizeF)
 
 
 def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
@@ -301,6 +301,7 @@ def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
     blackfog=(0, 0, 0, 110)
     redfog=(255,0,0,  110)
     greenfog=(0,125,0,  110)
+    bluefog=(0,0,125,  110)
     white=(255,255,255)
     black=(0,0,0)
     red=(255,0,0)
@@ -311,10 +312,12 @@ def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
     if fg=='white': fcol=white
     if fg=='red':   fcol=red
     if fg=='green': fcol=green
+    ##########################
     if bg=='black': bcol=blackfog
     if bg=='white': bcol=whitefog
     if bg=='red':   bcol=redfog
     if bg=='green': bcol=greenfog
+    if bg=='blue': bcol=bluefog
     draw.rectangle( [posi,posf] , bcol )
     draw.text( posi,text,         fcol , font=font)
     if DEBUG: print('DEBUG','rectg and text ok')
@@ -326,9 +329,9 @@ def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
 print("\n\n ./gpsmap3.py -x 620 -y 310 -z 15 -c CZ\n ./gpsmap3.py -x 1320 -y 710 -z 15 -c CZ ")
 parser = OptionParser()
 
-parser.add_option("-x", "--width", dest="IMX", type="int",
+parser.add_option("-x", "--width", dest="IMX", type="int",default=800,
                   help="")
-parser.add_option("-y", "--height", dest="IMY",type="int",
+parser.add_option("-y", "--height", dest="IMY",type="int",default=600,
                   help="")
 parser.add_option("-z", "--zoom", dest="zoom",type="int",
                   help="use zoom 11 and 15 only, 16,17,18 a.tile.osm")
@@ -349,16 +352,23 @@ parser.add_option("-d", "--debug",
                   action="store_true", dest="debug", default=False,
                   help="debug messages")
 
-parser.add_option("-f", "--factorresize",  dest="factor", default=2,
+parser.add_option("-f", "--factorresize",  dest="factor", type='float',default=2,
                   help="resize factor ... usually 2")
 
 (options, args) = parser.parse_args()
 print(options)
+
+
 resizeF=float(options.factor)
 DEBUG=options.debug
-if options.IMX!=None: IMX=options.IMX
-if options.IMY!=None: IMY=options.IMY
+if options.IMX!=None: IMX=int(options.IMX/resizeF)
+if options.IMY!=None: IMY=int(options.IMY/resizeF)
+IMX=int(options.IMX/resizeF)
+IMY=int(options.IMY/resizeF)
+print('X Y:',IMX,IMY)
 if options.zoom!=None: zoom=options.zoom
+
+
 
 ############################################### CITIES  CSV:
 #http://download.geonames.org/export/dump/
@@ -418,8 +428,8 @@ WPOINTLEN=0
 WPOINT=newwaypoint(WPOINT, WPOINTLEN)
 
 print(options.city)
-print(IMX,IMY)
-IMX,IMY=(int(IMX/2),int(IMY/2))
+#print(IMX,IMY)
+#IMX,IMY=(int(IMX/2),int(IMY/2))
 
 
 
@@ -587,15 +597,23 @@ def loop():
                 if DEBUG:print( "COOR==",XCoor, YCoor )
                 lastXY=(XCoor, YCoor)
 
-                r=0.002* (16-zoom)**1.8
+                # 1.8 x    15,12 lze;  8 nic
+                if zoom==15:
+                    r=0.002* (16-zoom)**1.8
+                if zoom==12:
+                    r=0.002* (16-zoom)**1.5
+                if zoom==5:
+                    r=0.002* (16-zoom)**2.8
+                if zoom==8:
+                    r=0.002* (16-zoom)**2.2
                 dx=r*sin(course/180*pi)/crf
                 dy=r*cos(course/180*pi)
                 if DEBUG:print("DEBUG {:.5f}  {:.5}  {:.5f}".format(dx,dy,r))
-                mam= CircleMarker( (XCoor+dx,YCoor+dy), 'green', 9) 
+                mam= CircleMarker( (XCoor+dx,YCoor+dy), 'lawngreen', 9) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
-                mam= CircleMarker( (XCoor+dx*1.07,YCoor+dy*1.07), 'green', 6) 
+                mam= CircleMarker( (XCoor+dx*1.07,YCoor+dy*1.07), 'lawngreen', 6) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
-                mam= CircleMarker( (XCoor+dx*1.12,YCoor+dy*1.12), 'green', 4) 
+                mam= CircleMarker( (XCoor+dx*1.12,YCoor+dy*1.12), 'lawngreen', 4) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG", "m11 render ")
             mapproblem=0
@@ -676,6 +694,10 @@ def loop():
                 cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
                 #print('course',cour)
                 gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi),fg='white', bg='black',radius=rad)
+
+                
+############################################################ NAVIGATION ########################                
+############################################################ NAVIGATION ########################                
 ############################################################ NAVIGATION ########################                
             ######################################### DFT   -1 == LAST POSSIBLE WAYPOINT always there
             if ( abs(YCoor)<90):
@@ -691,6 +713,10 @@ def loop():
                 rad=1.0
                 if idi<0.5:rad=idi*2
                 gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='green',radius=rad)
+
+#                print('adding MAM',(dfT.ix[i]['x'],dfT.ix[i]['y']),'BLUE')
+                mam= CircleMarker( (dfT.ix[i]['x'],dfT.ix[i]['y']), 'lightgreen', 12) 
+                m1.add_marker( mam, maxmarkers=maxmarkers )
             ######################################### DFT  WPOINT == 1st/WPOINT(th) ON NEXT WAYPOINT
             # 2 modes:  not clear what to use
             #   1/when closer than 0.5km, NEXT;  /strict waypooint check/
@@ -710,7 +736,16 @@ def loop():
                 rad=0.8
                 if idi<0.5:
                     rad=idi*2
-                gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='red',radius=rad)
+                gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='blue',radius=rad)
+                
+                #print('adding MAM',(dfT.ix[i]['x'],dfT.ix[i]['y']),'BLUE')
+                mam= CircleMarker( (dfT.ix[i]['x'],dfT.ix[i]['y']), 'blue', 10) 
+                m1.add_marker( mam, maxmarkers=maxmarkers )
+                for aindex,arow in dfT.iterrows():
+                    mam= CircleMarker( (arow['x'],arow['y']), 'blue', 8) 
+                    m1.add_marker( mam, maxmarkers=maxmarkers )
+                    
+
                 #WPOINT=newwaypoint(WPOINT) # WPOINT=WPOINT+1 # I WANT WRITE HERE
                 ########### switch to new WPOINT
                 if idi<0.9:
