@@ -84,6 +84,7 @@ from math import sqrt,cos,pi,floor,asin,radians
 
 
 def get_dist(lon2, lat2, lon1, lat1):
+    if DEBUG: print(lon2, lat2, lon1, lat1)
 #def haversine(lon1, lat1, lon2, lat2):
     """
     Calculate the great circle distance between two points 
@@ -99,6 +100,24 @@ def get_dist(lon2, lat2, lon1, lat1):
     r = 6371 # Radius of earth in kilometers. Use 3956 for miles
 #    print('converted to radians')
     return floor( 10 *c * r)/10
+
+def get_dist_prec(lon2, lat2, lon1, lat1):
+    if DEBUG: print(lon2, lat2, lon1, lat1)
+#def haversine(lon1, lat1, lon2, lat2):
+    """
+    Calculate the great circle distance between two points 
+    on the earth (specified in decimal degrees)
+    """
+    # convert decimal degrees to radians 
+    lon1, lat1, lon2, lat2 = map(radians, [lon1, lat1, lon2, lat2])
+    # haversine formula 
+    dlon = lon2 - lon1 
+    dlat = lat2 - lat1 
+    a = sin(dlat/2)**2 + cos(lat1) * cos(lat2) * sin(dlon/2)**2
+    c = 2 * asin(sqrt(a)) 
+    r = 6371 # Radius of earth in kilometers. Use 3956 for miles
+#    print('converted to radians')
+    return  c * r
 
 
 def get_course( lon1, lat1, lon2, lat2):
@@ -195,18 +214,18 @@ def get_GPGGA(lin,a,x,y,r):
 
     
 
-def newwaypoint(WPOINT):
+def newwaypoint(WPOINT, WPOINTLEN):
     global timex
     global dfT
-    print('... newwaypoint',WPOINT)
+    print('... newwaypoint {}  {:5.2f} km'.format(WPOINT,WPOINTLEN))
     if options.target!=False:
-        print(" going to open")
+        #print(" going to open")
         with open(options.target+'.log', 'a') as f:
-            print("opened and gonna write",timex)
+            print("opened and gonna write",datetime.datetime.now())
             DELTA=datetime.datetime.now()-WPOINTIME
-#            f.write('ahoj'+timex+'\n')
-#            f.write(dfT.ix[WPOINT]['city'],',',dfT.ix[WPOINT]['y'],',',dfT.ix[WPOINT]['x'],',',timex)
-            f.write( str(dfT.ix[WPOINT]['city'])+','+str(dfT.ix[WPOINT]['y'])+','+str(dfT.ix[WPOINT]['x'])+','+timex+','+DELTA+'\n')
+            DELTA=str(DELTA)[:-7]
+            WPL="{:5.1f} km".format(WPOINTLEN)
+            f.write( str(dfT.ix[WPOINT]['city'])+','+str(dfT.ix[WPOINT]['y'])+','+str(dfT.ix[WPOINT]['x'])+','+str(datetime.datetime.now())+','+str(DELTA)+','+str(WPL)+'\n')
         f.close()
     return WPOINT+1
 
@@ -362,8 +381,7 @@ if options.city=="IT100":
     df1.columns=['people','city','y','x','c']
 
 dfT=None
-WPOINT=0
-WPOINTIME=datetime.datetime.now()
+
 if options.targetrev!=False:
     options.target=options.targetrev
     print('REVERSED TARGET')
@@ -378,6 +396,10 @@ if options.targetrev!=False:
     dfT=dfT.reset_index(drop=True)
     print('REVERSING dfT',dfT)
 
+WPOINT=0
+WPOINTIME=datetime.datetime.now()
+WPOINTLEN=0
+WPOINT=newwaypoint(WPOINT, WPOINTLEN)
 
 print(options.city)
 print(IMX,IMY)
@@ -436,6 +458,7 @@ def loop():
     global redraw
     global DEBUG
     global WPOINT
+    global WPOINTLEN
     global WPOINTIME
     global cloproach
 
@@ -493,7 +516,8 @@ def loop():
         Alti,XCoor,YCoor,redraw,timex=get_GPGGA(lin,Alti,XCoor,YCoor,redraw)
         if redraw==1:
             DELTA=datetime.datetime.now()-WPOINTIME
-            print(' '+fix+timex+" {:6.4f} {:6.4f}/ {:4.1f} {:4.1f} {:4.1f} {}\r".format( XCoor,YCoor , speed, Alti, course, DELTA) ,end='\r')
+            DELTA=str(DELTA)[:-7]
+            print(' '+fix+timex+" {:6.4f} {:6.4f}/ {:6.1f} km/h {:4.1f} m {:4.1f} deg {}\r".format( XCoor,YCoor , speed*1.852, Alti, course, DELTA) ,end='\r')
             #sys.stdout.flush()
         if DEBUG: print('DEBUG redraw==', redraw)
 
@@ -515,8 +539,14 @@ def loop():
                     crf=cos(pi*YCoor/180)
                 else:
                     crf=1.
+                if DEBUG:print( "to add WPOINTLEN==", WPOINTLEN )
+                #                WPOINTLEN=WPOINTLEN + 0.1 #######
+                #                if DEBUG:print( "to add WPOINTLEN==", WPOINTLEN )
+                if lastXY[0]!=0:
+                    WPOINTLEN=WPOINTLEN + get_dist_prec( XCoor,YCoor,lastXY[0],lastXY[1])
+                if DEBUG:print( "to add WPOINTLEN==", WPOINTLEN )
                 if DEBUG:print( "COOR==",XCoor, YCoor )
-                lastXY=(XCoor, YCoor);
+                lastXY=(XCoor, YCoor)
 
                 r=0.002* (16-zoom)**1.8
                 dx=r*sin(course/180*pi)/crf
@@ -646,9 +676,10 @@ def loop():
                 ########### switch to new WPOINT
                 if idi<0.9:
                     if  (idi>cloproach):
-                        WPOINT=newwaypoint(WPOINT) # WPOINT=WPOINT+1 # I WANT WRITE HERE
+                        WPOINT=newwaypoint(WPOINT,WPOINTLEN) # WPOINT=WPOINT+1 # I WANT WRITE HERE
+                        WPOINTLEN=0.
                         DELTA=datetime.datetime.now()-WPOINTIME
-                        print("NEW WAYPOINT ON CLOSETS APPROACH", WPOINT, cloproach, DELTA)
+                        print("NEW WAYPOINT ON CLOSETS APPROACH {} {} km/ {}".format( WPOINT, cloproach, DELTA) )
                         WPOINTIME=datetime.datetime.now()
                         cloproach=10000.
                         idi=10000
@@ -658,7 +689,7 @@ def loop():
 #                ######### else just keep cloproach minimum
                 if idi<cloproach:
                     cloproach=idi ## refresh last value
-                    print('cloproach decreased {:5.1f} km    '.format( idi) )
+                    print('{}  {:5.1f} km   + {:5.1f} km  '.format(dfT.ix[i]['city'], idi, WPOINTLEN) )
                 ### in case of missed target or sleeping gps: ###################
                 if (len(dfT)>=WPOINT):
 #                    if DEBUG:print('searching idi2','WP==',i,WPOINT)
