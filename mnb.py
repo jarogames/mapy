@@ -217,7 +217,7 @@ def get_GPGGA(lin,a,x,y,r):
 def newwaypoint(WPOINT, WPOINTLEN):
     global timex
     global dfT
-    print('... newwaypoint {}  {:5.2f} km'.format(WPOINT,WPOINTLEN))
+    print('... newwaypoint {}  {:5.2f} km            '.format(WPOINT,WPOINTLEN))
     if options.target!=False:
         #print(" going to open")
         with open(options.target+'.log', 'a') as f:
@@ -225,11 +225,14 @@ def newwaypoint(WPOINT, WPOINTLEN):
             DELTA=datetime.datetime.now()-WPOINTIME
             DELTA=str(DELTA)[:-7]
             WPL="{:5.1f} km".format(WPOINTLEN)
-            f.write( str(dfT.ix[WPOINT]['city'])+','+str(dfT.ix[WPOINT]['y'])+','+str(dfT.ix[WPOINT]['x'])+','+str(datetime.datetime.now())+','+str(DELTA)+','+str(WPL)+'\n')
+            f.write( str(dfT.ix[WPOINT]['city'])+','+str(dfT.ix[WPOINT]['y'])+','+str(dfT.ix[WPOINT]['x'])+','+str(datetime.datetime.now())[:-7]+','+str(DELTA)+','+str(WPL)+'\n')
         f.close()
-    if not(dfT is None) and (len(dfT)-1>=WPOINT):
-        if DEBUG: print('========== Returning END WPOINT', WPOINT)
-        return WPOINT    
+    print('... newwAFTEROP {}  {:5.2f} km            '.format(WPOINT,WPOINTLEN))
+    if not(dfT is None) and (len(dfT)<WPOINT):
+        #if DEBUG:
+        print('========== Returning same END WPOINT', WPOINT,'len=',len(dfT))
+        return WPOINT
+    print("....returning ",WPOINT,WPOINT+1)
     return WPOINT+1
 
 
@@ -435,16 +438,27 @@ print(options.city)
 
 def keydown(e):
     global zoom
-    #    print('down', e.char)
-    inx=zoomset.index(zoom)
-    print(inx)
-    inx=inx+1
-    print(inx,'added 1, max==',len(zoomset))
-    if inx>len(zoomset)-1:
-        inx=0
-    print('new inx=',inx)
-    zoom=zoomset[inx]
-    print("=======================================ZOOM {}\n".format(zoom))
+    global WPOINT
+    if len(e.char)==0: return 
+    print('     keypress /'+e.char+'/')
+    if e.char==' ':
+        #print('SPACE')
+        inx=zoomset.index(zoom)
+        #    print(inx)
+        inx=inx+1
+        #print(inx,'added 1, max==',len(zoomset))
+        if inx>len(zoomset)-1:
+            inx=1
+            #    print('new inx=',inx)d pay me more
+        zoom=zoomset[inx]
+        print("=======================================ZOOM {}       ".format(zoom))
+    if e.char in ['p','o','i','u','l','k','j','n','m',',','.','/',';']:
+        dfT.set_value(WPOINT,'x',0)
+        dfT.set_value(WPOINT,'y',0)
+        return
+        #print('changing WPOINT',WPOINT,'to +1',dfT.ix[WPOINT]['city'])
+        #WPOINT=WPOINT+1
+            
 def callback(event):
     frame.focus_set()
     print( "clicked at", event.x, event.y)
@@ -566,7 +580,7 @@ def loop():
         if redraw==1:
             DELTA=datetime.datetime.now()-WPOINTIME
             DELTA=str(DELTA)[:-7]
-            print(' '+fix+timex+" {:6.4f} {:6.4f}/ {:6.1f} km/h {:4.1f} m {:4.1f} deg {}\r".format( XCoor,YCoor , speed*1.852, Alti, course, DELTA) ,end='\r')
+            print(' '+fix+timex+" {:6.4f} {:6.4f}/{:6.1f} km/h {:4.1f} m {:4.1f} deg {}\r".format( XCoor,YCoor , speed*1.852, Alti, course, DELTA) ,end='\r')
             #sys.stdout.flush()
         if DEBUG: print('DEBUG redraw==', redraw)
 
@@ -609,11 +623,11 @@ def loop():
                 dx=r*sin(course/180*pi)/crf
                 dy=r*cos(course/180*pi)
                 if DEBUG:print("DEBUG {:.5f}  {:.5}  {:.5f}".format(dx,dy,r))
-                mam= CircleMarker( (XCoor+dx,YCoor+dy), 'lawngreen', 9) 
+                mam= CircleMarker( (XCoor+dx,YCoor+dy), 'green', 9) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
-                mam= CircleMarker( (XCoor+dx*1.07,YCoor+dy*1.07), 'lawngreen', 6) 
+                mam= CircleMarker( (XCoor+dx*1.07,YCoor+dy*1.07), 'green', 6) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
-                mam= CircleMarker( (XCoor+dx*1.12,YCoor+dy*1.12), 'lawngreen', 4) 
+                mam= CircleMarker( (XCoor+dx*1.12,YCoor+dy*1.12), 'green', 4) 
                 m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG", "m11 render ")
             mapproblem=0
@@ -715,7 +729,7 @@ def loop():
                 gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='green',radius=rad)
 
 #                print('adding MAM',(dfT.ix[i]['x'],dfT.ix[i]['y']),'BLUE')
-                mam= CircleMarker( (dfT.ix[i]['x'],dfT.ix[i]['y']), 'lightgreen', 12) 
+                mam= CircleMarker( (dfT.ix[i]['x'],dfT.ix[i]['y']), 'green', 14) 
                 m1.add_marker( mam, maxmarkers=maxmarkers )
             ######################################### DFT  WPOINT == 1st/WPOINT(th) ON NEXT WAYPOINT
             # 2 modes:  not clear what to use
@@ -742,7 +756,7 @@ def loop():
                 mam= CircleMarker( (dfT.ix[i]['x'],dfT.ix[i]['y']), 'blue', 10) 
                 m1.add_marker( mam, maxmarkers=maxmarkers )
                 for aindex,arow in dfT.iterrows():
-                    mam= CircleMarker( (arow['x'],arow['y']), 'blue', 8) 
+                    mam= CircleMarker( (arow['x'],arow['y']), 'blue', 10) 
                     m1.add_marker( mam, maxmarkers=maxmarkers )
                     
 
@@ -753,7 +767,7 @@ def loop():
                         WPOINT=newwaypoint(WPOINT,WPOINTLEN) # WPOINT=WPOINT+1 # I WANT WRITE HERE
                         WPOINTLEN=0.
                         DELTA=datetime.datetime.now()-WPOINTIME
-                        print("NEW WAYPOINT ON CLOSETS APPROACH {} {} km/ {}".format( WPOINT, cloproach, DELTA) )
+                        print("NEW WP ON CLOPROACH {} {} km  idi={:6.1f} / {}      ".format( WPOINT, cloproach, idi,DELTA) )
                         WPOINTIME=datetime.datetime.now()
                         cloproach=10000.
                         idi=10000
@@ -763,7 +777,7 @@ def loop():
 #                ######### else just keep cloproach minimum
                 if idi<cloproach:
                     cloproach=idi ## refresh last value
-                    print('{}  {:5.1f} km   + {:5.1f} km  '.format(dfT.ix[i]['city'], idi, WPOINTLEN) )
+                    print('{}  {:5.1f} km + {:5.1f} km    '.format(dfT.ix[i]['city'], idi, WPOINTLEN) )
                 ### in case of missed target or sleeping gps: ###################
                 if not(dfT is None) and (len(dfT)>=WPOINT):
 #                    if DEBUG:print('searching idi2','WP==',i,WPOINT)
