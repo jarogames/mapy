@@ -45,8 +45,7 @@ def buffered_readLine(socket):
         try:
             part = str(socket.recv(1),'utf-8')
         except:
-            part=""
-#        print( '{'+part+'}' , len(part), len(line)  )
+            return "KILL"#        print( '{'+part+'}' , len(part), len(line)  )
         if len(part)==0:
             return "KILL"
         if part != "\n":
@@ -60,11 +59,13 @@ import random
 import time 
 from math import floor,cos,sin
 
+import re ### device from devices
+
 #######  MAIN THING - but my fork is necessary #####
 from staticmap import StaticMap, CircleMarker, Line
 
 ############ i dont know
-from IPython.core.display import Image, display
+#from IPython.core.display import Image, display
 import numpy
 ### PIL for printing on png file
 from PIL import Image
@@ -164,6 +165,7 @@ redraw=0
     #-------- fix--------------------
 def get_GPGSA(lin,f):
     global DEBUG
+    global fix
     if (lin.find('GPGSA')>0):
         if (float(lin.split(',')[2])>1):
             fix='+' #print( 'fix' )
@@ -171,6 +173,7 @@ def get_GPGSA(lin,f):
             #    print('POSITION:')
         else:
             fix='NOFIX'
+            #print('nofix')
         return fix
     else:
         return f
@@ -217,6 +220,8 @@ def get_GPGGA(lin,a,x,y,r):
 def newwaypoint(WPOINT, WPOINTLEN):
     global timex
     global dfT
+    global m1
+    global options
     print('... newwaypoint {}  {:5.2f} km            '.format(WPOINT,WPOINTLEN))
     if options.target!=False:
         #print(" going to open")
@@ -226,12 +231,22 @@ def newwaypoint(WPOINT, WPOINTLEN):
             DELTA=str(DELTA)[:-7]
             WPL="{:5.1f} km".format(WPOINTLEN)
             f.write( str(dfT.ix[WPOINT]['city'])+','+str(dfT.ix[WPOINT]['y'])+','+str(dfT.ix[WPOINT]['x'])+','+str(datetime.datetime.now())[:-7]+','+str(DELTA)+','+str(WPL)+'\n')
-        f.close()
+            f.close()
+
     print('... newwAFTEROP {}  {:5.2f} km            '.format(WPOINT,WPOINTLEN))
-    if not(dfT is None) and (len(dfT)<WPOINT):
+    if not(dfT is None) and (len(dfT)<=WPOINT+1):
         #if DEBUG:
         print('========== Returning same END WPOINT', WPOINT,'len=',len(dfT))
         return WPOINT
+    else:
+        if not m1 is None:
+            for ii in range(WPOINT,-1,-1):
+                if not dfT is None:
+                    mam = CircleMarker( ( dfT.ix[ii]['x'],dfT.ix[ii]['y'] ), 'lightgrey', 9)
+                    m1.add_marker( mam )
+                    dfT.set_value( ii, 'x' , 0)
+                    dfT.set_value( ii, 'y' , 0)
+    
     print("....returning ",WPOINT,WPOINT+1)
     return WPOINT+1
 
@@ -250,6 +265,8 @@ def newwaypoint(WPOINT, WPOINTLEN):
 ##################################################
 
 zoom=15
+XCoor=0
+YCoor=0
 #IMX=int(650*resizeF) ## POZDEJI
 #IMY=int(350*resizeF)
 
@@ -289,7 +306,7 @@ def gps_text(image,pos,text,fg='black',bg='white',radius=1.0):
         toy=int(toy-h/2)
         if (tox+w)>IMX: tox=IMX-w-1
         if (tox)<0:   tox=1
-        if (toy+h/2)>=IMY: toy=IMY-h/2
+        if (toy+h)>=IMY: toy=IMY-h
         if (toy)<0:   toy=1
 #        if ( sin(pos)>=0):
 #            tox=tox-w
@@ -425,20 +442,21 @@ if options.targetrev!=False:
 #    dfT=pd.DataFrame( 0, index=numpy.arange(0) , columns=['city','y','x'])
     
 
-WPOINT=0
-WPOINTIME=datetime.datetime.now()
-WPOINTLEN=0
-WPOINT=newwaypoint(WPOINT, WPOINTLEN)
 
 print(options.city)
 #print(IMX,IMY)
 #IMX,IMY=(int(IMX/2),int(IMY/2))
-
-
+#
+image=None
 
 def keydown(e):
     global zoom
     global WPOINT
+    global XCoor
+    global YCoor
+    global lastXY
+    global options
+    global image
     if len(e.char)==0: return 
     print('     keypress /'+e.char+'/')
     if e.char==' ':
@@ -452,16 +470,41 @@ def keydown(e):
             #    print('new inx=',inx)d pay me more
         zoom=zoomset[inx]
         print("=======================================ZOOM {}       ".format(zoom))
-    if e.char in ['p','o','i','u','l','k','j','n','m',',','.','/',';']:
-        dfT.set_value(WPOINT,'x',0)
-        dfT.set_value(WPOINT,'y',0)
+    if e.char in ['q']:
+        quit()
+    if e.char in ['r','f','c','e','d','x','w','s','z','q','a','<']:
+        print('LEFT KEYBOARD')
+    if e.char in ['u','j','n','i','k','m','o','l',',','p',';','.','/','[']:
+        if ( abs(lastXY[1])<90):
+            crf=cos(pi*lastXY[1]/180)
+        else:
+            crf=1.
+        i=(   (df1['y']-lastXY[1])**2+((df1['x']-lastXY[0])*crf)**2 ).argsort()[0]
+        j=(   (df1['y']-lastXY[1])**2+((df1['x']-lastXY[0])*crf)**2 ).argsort()[1]
+        nlabel= '"near '+df1.loc[i]['city']+' and '+df1.loc[j]['city']+'"'
+        print( nlabel,',',    lastXY[1],',',lastXY[0])
+        gps_text(image, 'rb', nlabel , fg='green',bg='black' )
+        #print(image)
+        mam= CircleMarker( (lastXY[0],lastXY[1]), 'yellow', 12)
+        m1.add_marker( mam  )
+
+
+        with open( options.target+'.saved', 'a' ) as f:
+            f.write( '"near '+df1.loc[i]['city']+' and '+df1.loc[j]['city']+'",'+str(lastXY[1])+','+str(lastXY[0])+'\n' )
+            f.close()
+    ####################### ENTER = step WPOINT        
+    if ord(e.char)==13:
+        if WPOINT+1 <len(dfT):  ### do not delete last wpoint
+            dfT.set_value(WPOINT,'x',0)
+            dfT.set_value(WPOINT,'y',0)
         return
         #print('changing WPOINT',WPOINT,'to +1',dfT.ix[WPOINT]['city'])
         #WPOINT=WPOINT+1
             
 def callback(event):
     frame.focus_set()
-    print( "clicked at", event.x, event.y)
+    print( "clicked at", event.x, event.y,"  ")
+    print( m1._x_to_lon(m1._px_to_x(), zoom ) )
 ###### tinker stuff#############################################
 root = tkinter.Tk()
 label = tkinter.Label(root)
@@ -469,7 +512,7 @@ label = tkinter.Label(root)
 label.pack()
 frame = tkinter.Frame(root, width=1, height=1)
 frame.bind("<Key>", keydown)
-frame.bind("<Button-1>", callback)
+label.bind("<Button-1>", callback)
 frame.pack()
 frame.focus_set()
 
@@ -483,7 +526,33 @@ delay = 500   # in milliseconds
 
 m1 = StaticMap( IMX,IMY, url_template='http://localhost:8900/{z}/{x}/{y}.png')
 
-maxmarkers=4*25*2 ## because the forward arrow
+if not(dfT is None):
+    for aindex,arow in dfT.iterrows():
+        mam= CircleMarker( (arow['x'],arow['y']), 'blue', 10) 
+        #                    m1.add_marker( mam, maxmarkers=maxmarkers )
+        m1.add_marker( mam )
+
+        mam= CircleMarker( (dfT.ix[len(dfT)-1]['x'],dfT.ix[len(dfT)-1]['y']), 'green', 10) 
+        #m1.add_marker( mam, maxmarkers=maxmarkers )
+        m1.add_marker( mam )
+
+if options.target!=False:
+    with open(options.target+'.log', 'a') as f:
+        f.write('#=================================================\n')
+        f.close()
+
+
+WPOINT=0
+WPOINTIME=datetime.datetime.now()
+WPOINTLEN=0
+#WPOINT=newwaypoint(WPOINT, WPOINTLEN)
+
+
+maxmarkers=1000*4*25*2 ## because the forward arrow
+
+
+
+
 
 redraw=0
 once=0
@@ -507,6 +576,7 @@ fix="NOFIX"
 cloproach=10000  # closest approach for WPOINT
 ################################################ LOOOOOOOOOOP ################
 def loop():
+    global image
     global dfT
     global df1
     global timex
@@ -524,39 +594,54 @@ def loop():
     global WPOINTLEN
     global WPOINTIME
     global cloproach
+    global XCoor
+    global YCoor
 
 ####    course,speed=(0,0)
 #    fix="NOFIX"
     Alti,XCoor,YCoor=(0, 14.9+0.003*random.random(), 50.+0.003*random.random()  )
 
     if (sock is None ):
-        print('starting sock .... ',sock )
+        print('creating socket ... ',end="")
         # Create a TCP/IP socket
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.settimeout(1.0)
         # Connect the socket to the port where the server is listening
         server_address = ('localhost', 2947)
-        print( 'connecting to %s port %s' % server_address)
+        print( ' connecting to {:s}:{:d} ...'.format(server_address[0],server_address[1]),end="")
         time.sleep(2)
         sock.connect(server_address)
         # Send data
         message = '?WATCH={"enable":true,"nmea":true}\n'
         #print( 'sending "%s"' % message)
         sock.sendall( str.encode(message) )
-        print('WATCH sent', end='\r')
+        print('WATCH sent', end='\n')
     data=""
 #    print('DEBUG communicating sock .... ' )
     try:
         #time.sleep(1)
         if DEBUG: print("DEBUG tried sock")
+        #print('socket readline...',end="") # 3 times...version,dev,watch
         data=buffered_readLine(sock)
+        if data.find('VERSION'):
+            aa=re.findall(r'"release":"(.+?)"',data)
+            #if aa:
+                #print('rel:',aa[0],end="")
+            #print('Version')
+        if data.find('DEVICES'):
+            aa=re.findall(r'"path":"(.+?)"',data)
+            if aa:
+                print(' USB:',aa[0],end="\n")
+        #if data.find('WATCH'):
+            #print(' Watch.',end="")
+        #print(data)
         ################################################ONE DATA
         #data=buffered_readLine(sock)
         #print('P{'+data+'}')
         #while (len(data)>0):
         if DEBUG: print("DEBUG",data)
         if (data=="KILL"):
-            print( 'kill - closing socket - finally')
+            print( 'No data from socket')
             time.sleep(2)
             sock.close()
             sock=None
@@ -595,7 +680,8 @@ def loop():
             if fix=="+": color='red'
                
             mam= CircleMarker( (XCoor,YCoor), color, 6) 
-            m1.add_marker(mam, maxmarkers=maxmarkers )
+#            m1.add_marker(mam, maxmarkers=maxmarkers )
+            m1.add_marker(mam )
             if DEBUG: print("DEBUG",fix,"corrections")
             if fix=="+":  # first touch crashes
                 if ( abs(YCoor)<90):
@@ -623,51 +709,57 @@ def loop():
                 dx=r*sin(course/180*pi)/crf
                 dy=r*cos(course/180*pi)
                 if DEBUG:print("DEBUG {:.5f}  {:.5}  {:.5f}".format(dx,dy,r))
-                mam= CircleMarker( (XCoor+dx,YCoor+dy), 'green', 9) 
-                m1.add_marker(mam, maxmarkers=maxmarkers )
-                mam= CircleMarker( (XCoor+dx*1.07,YCoor+dy*1.07), 'green', 6) 
-                m1.add_marker(mam, maxmarkers=maxmarkers )
-                mam= CircleMarker( (XCoor+dx*1.12,YCoor+dy*1.12), 'green', 4) 
-                m1.add_marker(mam, maxmarkers=maxmarkers )
+                #SIPKA SMERU ZELENA ###################################################
+#                mam= CircleMarker( (XCoor+dx,YCoor+dy), 'green', 9) 
+#                m1.add_marker(mam, maxmarkers=maxmarkers )
+#                mam= CircleMarker( (XCoor+dx*1.07,YCoor+dy*1.07), 'green', 6) 
+#                m1.add_marker(mam, maxmarkers=maxmarkers )
+#                mam= CircleMarker( (XCoor+dx*1.12,YCoor+dy*1.12), 'green', 4) 
+#                m1.add_marker(mam, maxmarkers=maxmarkers )
             if DEBUG: print("DEBUG", "m11 render ")
             mapproblem=0
             try:
                 image=m1.render(zoom=zoom, center=(XCoor,YCoor))
             except:
-                print('maps with zoom=',zoom,'not found')
+                print('maps with zoom=',zoom,'not found ...')
                 mapproblem=1
             if mapproblem>0:
                 mapproblem=0
                 try:
-                    image=m1.render(zoom=12)
+                    #zoom=12
+                    image=m1.render(zoom=12, center=(XCoor,YCoor))
                 except:
                     mapproblem=1
-                    print('maps with zoom=',12,'not found')
+                    print('maps with zoom=',12,'not found ...')
             if mapproblem>0:
                 mapproblem=0
                 try:
-                    image=m1.render(zoom=8)
+                    #zoom=8
+                    image=m1.render(zoom=8, center=(XCoor,YCoor))
                 except:
                     mapproblem=1
-                    print('maps with zoom=',8,'not found')
+                    print('maps with zoom=',8,'not found ...')
             if mapproblem>0:
                 mapproblem=0
                 try:
-                    image=m1.render(zoom=5)
+                    image=m1.render(zoom=5, center=(XCoor,YCoor))
                 except:
                     mapproblem=1
-                    print('maps with zoom=',5,'not found')
-            m1.remove_last_marker()
-            m1.remove_last_marker()
-            m1.remove_last_marker()
-            if DEBUG: print("DEBUG", "i want to draw now")
-            draw = ImageDraw.Draw(image, 'RGBA')
-            font   = ImageFont.truetype("Ubuntu-B.ttf", 22)
-            font16 = ImageFont.truetype("Ubuntu-B.ttf", 16)
+                    print('maps with zoom=',5,'not found ...')
+#            m1.remove_last_marker()
+#            m1.remove_last_marker()
+#            m1.remove_last_marker()
+            if DEBUG: print("DEBUG", "i want to draw text now")
+#            draw = ImageDraw.Draw(image, 'RGBA')
+#            font   = ImageFont.truetype("Ubuntu-B.ttf", 22)
+#            font16 = ImageFont.truetype("Ubuntu-B.ttf", 16)
             ##### SPEED
             gps_text(image,'lt',"{:4.1f}".format(speed*1.852)+' km/h')
             ##### HEADING
-            gps_text(image,'rt',"{:3.0f}".format(course))
+            if fix=="+":
+                gps_text(image,'rt',"{:3.0f}".format(course))
+            else:
+                gps_text(image,'rt','NO FIX',fg='red',bg='black')
             ##### Altitude
             gps_text(image,'lb',"{:5.0f} m".format(Alti))
             ##### TIME
@@ -717,7 +809,7 @@ def loop():
             if ( abs(YCoor)<90):
                 crf=cos(pi*YCoor/180)
             if options.target and not(dfT is  None) and len(dfT)>1:
-                if DEBUG:print('------------------------ on TGT -1')
+                if DEBUG:print('------------------------ on TGT -1==finale green')
                 i=len(dfT)-1
                 if DEBUG:print(crf,'-1Tcrf',i,'i')
                 idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
@@ -730,19 +822,24 @@ def loop():
 
 #                print('adding MAM',(dfT.ix[i]['x'],dfT.ix[i]['y']),'BLUE')
                 mam= CircleMarker( (dfT.ix[i]['x'],dfT.ix[i]['y']), 'green', 14) 
-                m1.add_marker( mam, maxmarkers=maxmarkers )
+#                m1.add_marker( mam, maxmarkers=maxmarkers )
+                m1.add_marker( mam  )
             ######################################### DFT  WPOINT == 1st/WPOINT(th) ON NEXT WAYPOINT
             # 2 modes:  not clear what to use
             #   1/when closer than 0.5km, NEXT;  /strict waypooint check/
             #   2/OR when the next is closer,    /rather intentional waypoints/
             #   1b/ closest approach +-1km...
             #
-            if options.target and not(dfT is  None) and (len(dfT)>WPOINT):
+            ######  1+WPOINT ... last wpoint is in previous section ######
+            if options.target and not(dfT is  None) and (len(dfT)>1+WPOINT):
                 
-                if DEBUG:print('------------------------ on TGT WPOINT')
-                WPOINT=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort()[0]
+                if DEBUG:print('------------------------ on TGT WPOINT==',WPOINT)
+                #
+                # problem - kdyz vyberu nejblizsi, tak to narusuje komplik.trasy
+                #
+                #WPOINT=(   (dfT['y']-YCoor)**2+((dfT['x']-XCoor)*crf)**2 ).argsort()[0]
                 i=WPOINT
-                if DEBUG:print('WPOINT==',WPOINT,i,'==i', dfT.ix[i]['city'])
+                if DEBUG:print('WPOINT(closst!)==',WPOINT,i,'==i', dfT.ix[i]['city'])
                 idi=get_dist(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'] )
                 if DEBUG:print(crf,'Tcrf',i,'=i', 'idi===',idi)
                 cour=get_course(XCoor,YCoor,dfT.ix[i]['x'],dfT.ix[i]['y'])
@@ -750,15 +847,14 @@ def loop():
                 rad=0.8
                 if idi<0.5:
                     rad=idi*2
-                gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='blue',radius=rad)
+                if WPOINT<len(dfT):
+                    gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='blue',radius=rad)
                 
-                #print('adding MAM',(dfT.ix[i]['x'],dfT.ix[i]['y']),'BLUE')
-                mam= CircleMarker( (dfT.ix[i]['x'],dfT.ix[i]['y']), 'blue', 10) 
-                m1.add_marker( mam, maxmarkers=maxmarkers )
-                for aindex,arow in dfT.iterrows():
-                    mam= CircleMarker( (arow['x'],arow['y']), 'blue', 10) 
-                    m1.add_marker( mam, maxmarkers=maxmarkers )
-                    
+#                #print('adding MAM',(dfT.ix[i]['x'],dfT.ix[i]['y']),'BLUE')
+#                mam= CircleMarker( (dfT.ix[i]['x'],dfT.ix[i]['y']), 'blue', 10) 
+#                m1.add_marker( mam, maxmarkers=maxmarkers )
+#                m1.add_marker( mam  )
+############## BYLO TU ALL WAYPOINTS dfT.iterr                    
 
                 #WPOINT=newwaypoint(WPOINT) # WPOINT=WPOINT+1 # I WANT WRITE HERE
                 ########### switch to new WPOINT
@@ -777,7 +873,7 @@ def loop():
 #                ######### else just keep cloproach minimum
                 if idi<cloproach:
                     cloproach=idi ## refresh last value
-                    print('{}  {:5.1f} km + {:5.1f} km    '.format(dfT.ix[i]['city'], idi, WPOINTLEN) )
+                    print('{:2d} {}  {:5.1f} km + {:5.1f} km    '.format( WPOINT, dfT.ix[i]['city'], idi, WPOINTLEN) )
                 ### in case of missed target or sleeping gps: ###################
                 if not(dfT is None) and (len(dfT)>=WPOINT):
 #                    if DEBUG:print('searching idi2','WP==',i,WPOINT)
@@ -808,7 +904,8 @@ def loop():
             #root.after( 20, loop )
             #time.sleep(0.1)
             mam= CircleMarker( (XCoor,YCoor),  'orange', 6) 
-            m1.add_marker( mam, maxmarkers=maxmarkers )
+#            m1.add_marker( mam, maxmarkers=maxmarkers )
+            m1.add_marker( mam  )
 #            lastXY=(XCoor, YCoor);
             redraw=0
         ####### here i am after redraw.    
