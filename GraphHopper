@@ -1,0 +1,28 @@
+#!/bin/bash
+
+MYAPI=7c367768-0952-489c-af13-568367021650
+#### comma separated
+P1=$1
+P2=$2
+
+#mnisek
+P1=49.86215,14.26684
+#russbach
+P2=47.58928,13.46154
+
+
+#50
+lon1=`echo $P1 | awk -F"," '{print $1}'`
+lat1=`echo $P1 | awk -F"," '{print $2}'`
+
+#14
+lon2=`echo $P2 | awk -F"," '{print $1}'`
+lat2=`echo $P2 | awk -F"," '{print $2}'`
+
+curl -o GraphHopper.gpx "https://graphhopper.com/api/1/route?point=$P1&point=$P2&vehicle=car&debug=true&key=$MYAPI&type=gpx" 
+
+
+
+#####https://graphhopper.com/api/1/route?point=49.932707%2C11.588051&point=50.3404%2C11.64705&vehicle=car&debug=true&key=$MYAPI&type=json&calc_points=false&instructions=false
+
+

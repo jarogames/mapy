@@ -492,15 +492,36 @@ def keydown(e):
         with open( options.target+'.saved', 'a' ) as f:
             f.write( '"near '+df1.loc[i]['city']+' and '+df1.loc[j]['city']+'",'+str(lastXY[1])+','+str(lastXY[0])+'\n' )
             f.close()
+
+            
     ####################### ENTER = step WPOINT        
     if ord(e.char)==13:
-        if WPOINT+1 <len(dfT):  ### do not delete last wpoint
-            dfT.set_value(WPOINT,'x',0)
-            dfT.set_value(WPOINT,'y',0)
+        ######## AUTOMATICALY SWITCH TO CLOSER
+        i=WPOINT
+        if DEBUG:print('searching idi2','WP==',i,WPOINT)
+        idi=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0]
+        #idi=get_dist(XCoor,YCoor, dfT.ix[i]['x'],dfT.ix[i]['y'] )
+        idi2=get_dist(XCoor,YCoor, dfT.ix[i+1]['x'],dfT.ix[i+1]['y'] )
+        print("IDI 2 is ",idi2,'IDI1 = ',idi)
+        if idi2<idi:
+            WPOINT=WPOINT+1
+            print("NEW WAYPOINT BY HALF DISTANCE", WPOINT, idi, idi2)
+            ######## AUTO closer    
+        #if WPOINT+1 <len(dfT):  ### do not delete last wpoint
+         #   dfT.set_value(WPOINT,'x',0)
+          #  dfT.set_value(WPOINT,'y',0)
         return
         #print('changing WPOINT',WPOINT,'to +1',dfT.ix[WPOINT]['city'])
         #WPOINT=WPOINT+1
             
+
+
+
+
+################################## 
+#     MOUSE 
+#
+        
 def callback(event):
     frame.focus_set()
     print( "clicked at", event.x, event.y,"  ")
@@ -764,13 +785,17 @@ def loop():
             gps_text(image,'lb',"{:5.0f} m".format(Alti))
             ##### TIME
             gps_text(image,'rb',timex)
-                
+
+            ###############################################################
+            #  CITY - we create [0] [1] [2]
+            #
+            #
             if options.city and not(df1 is  None):
                 if DEBUG: print('------------------------ on id')
                 #print(df1)
                 if ( abs(YCoor)<90):
                     crf=cos(pi*YCoor/180)
-
+                ####### [0]
                 i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[0]
                 #print(crf,'crf',i,'i')
                 idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
@@ -780,7 +805,7 @@ def loop():
                 cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
                 #print('course',cour)
                 gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi),fg='white', bg='black',radius=rad)
-
+                ########## [1] 
                 i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[1]
                 #print(crf,'crf',i,'i')
                 idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
@@ -790,7 +815,7 @@ def loop():
                 cour=get_course(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'])
                 #print('course',cour)
                 gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi),fg='white', bg='black',radius=rad)
-
+                ########## [2]
                 i=(   (df1['y']-YCoor)**2+((df1['x']-XCoor)*crf)**2 ).argsort()[2]
                 #print(crf,'crf',i,'i')
                 idi=get_dist(XCoor,YCoor,df1.ix[i]['x'],df1.ix[i]['y'] )
@@ -802,13 +827,13 @@ def loop():
                 gps_text(image,cour,"{} {} ".format(df1.ix[i]['city'],idi),fg='white', bg='black',radius=rad)
 
                 
-############################################################ NAVIGATION ########################                
-############################################################ NAVIGATION ########################                
-############################################################ NAVIGATION ########################                
-            ######################################### DFT   -1 == LAST POSSIBLE WAYPOINT always there
+###################################################### NAVIGATION ########################  
+###################################################### NAVIGATION ########################    
+###################################################### NAVIGATION ########################   
+######################################## DFT   -1 == LAST POSSIBLE WAYPOINT always there
             if ( abs(YCoor)<90):
                 crf=cos(pi*YCoor/180)
-            if options.target and not(dfT is  None) and len(dfT)>1:
+            if options.target and not(dfT is  None) and len(dfT)>=1: #>=1...one term ok
                 if DEBUG:print('------------------------ on TGT -1==finale green')
                 i=len(dfT)-1
                 if DEBUG:print(crf,'-1Tcrf',i,'i')
@@ -820,14 +845,14 @@ def loop():
                 if idi<0.5:rad=idi*2
                 gps_text(image,cour,"{} {} ".format(dfT.ix[i]['city'],idi),fg='white',bg='green',radius=rad)
 
-#                print('adding MAM',(dfT.ix[i]['x'],dfT.ix[i]['y']),'BLUE')
+                #print('adding MAM',(dfT.ix[i]['x'],dfT.ix[i]['y']),'BLUE')
                 mam= CircleMarker( (dfT.ix[i]['x'],dfT.ix[i]['y']), 'green', 14) 
-#                m1.add_marker( mam, maxmarkers=maxmarkers )
+                #m1.add_marker( mam, maxmarkers=maxmarkers )
                 m1.add_marker( mam  )
-            ######################################### DFT  WPOINT == 1st/WPOINT(th) ON NEXT WAYPOINT
+            ################################ DFT  WPOINT == 1st/WPOINT(th) ON NEXT WAYPOINT
             # 2 modes:  not clear what to use
-            #   1/when closer than 0.5km, NEXT;  /strict waypooint check/
-            #   2/OR when the next is closer,    /rather intentional waypoints/
+            #   1/  when closer than 0.5km, NEXT;  /strict waypooint check/
+            #   2/  OR when the next is closer,    /rather intentional waypoints/
             #   1b/ closest approach +-1km...
             #
             ######  1+WPOINT ... last wpoint is in previous section ######
@@ -876,12 +901,14 @@ def loop():
                     print('{:2d} {}  {:5.1f} km + {:5.1f} km    '.format( WPOINT, dfT.ix[i]['city'], idi, WPOINTLEN) )
                 ### in case of missed target or sleeping gps: ###################
                 if not(dfT is None) and (len(dfT)>=WPOINT):
-#                    if DEBUG:print('searching idi2','WP==',i,WPOINT)
-#                    idi2=get_dist(XCoor,YCoor, dfT.ix[i+1]['x'],dfT.ix[i+1]['y'] )
-#                    print("IDI 2 is ",idi2,'IDI1 = ',idi)
-#                    if idi2<idi:
-#                        WPOINT=WPOINT+1
-#                        print("NEW WAYPOINT BY HALF DISTANCE", WPOINT, idi, idi2)
+                    ######## AUTOMATICALY SWITCH TO CLOSER
+                    #if DEBUG:print('searching idi2','WP==',i,WPOINT)
+                    #idi2=get_dist(XCoor,YCoor, dfT.ix[i+1]['x'],dfT.ix[i+1]['y'] )
+                    #print("IDI 2 is ",idi2,'IDI1 = ',idi)
+                    #if idi2<idi:
+                    #    WPOINT=WPOINT+1
+                    #    print("NEW WAYPOINT BY HALF DISTANCE", WPOINT, idi, idi2)
+                    ######## AUTO closer    
                     if idi>cloproach*1.5:
 #                        WPOINT=WPOINT+1
                         print("NEW WAYPOINT BY 150% CLOSEST APPROACH", WPOINT, idi, cloproach)
@@ -892,7 +919,7 @@ def loop():
                             dfT.set_value( ai, 'x', 0)
                             dfT.set_value( ai, 'y', 0)
                         
-#################################################################################################                 
+#########################################################################################    
 
 #            print('===================',resizeF,type(resizeF))
             
