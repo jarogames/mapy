@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #%matplotlib inline
 #pbf  http://download.geofabrik.de/europe.html
 #https://switch2osm.org/serving-tiles/building-a-tile-server-from-packages/
