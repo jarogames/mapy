@@ -1,6 +1,9 @@
+__pycache*
+__init*
 *.log
 \#*\#
 *~
+3
 4
 5
 6
@@ -16,6 +19,9 @@
 16
 17
 18
+19
+20
+21
 *.gpx
 a.png
 feh_*_filelist
