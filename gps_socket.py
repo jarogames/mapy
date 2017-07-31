@@ -90,7 +90,7 @@ def get_GPRMC(lin):
         try:
             gps_info['speed']=float(lin.split(',')[7])
         except:
-            print('e... speed    ')
+            print('e... speed  ', end='\r')
             gps_info['speed']=0
         try:
             gps_info['course']=float(lin.split(',')[8])
@@ -141,7 +141,7 @@ def get_GPGGA(lin ):
             gps_info['XCoor']=XCoor
             gps_info['YCoor']=YCoor
         except:
-            print("...error in division X Y Coor")
+            print("e... error in division X Y Coor", end='\r')
             XCoor=0
             YCoor=0
         try:
@@ -266,10 +266,10 @@ def translate_gp_line():
         gps_info['LY']=gps_info['YCoor']
 #    try:
         #print("======= print all")
-        print(' '+gps_info['fix']+gps_info['timex']+
-              " ({:6.4f},{:6.4f}){:6.1f} km/h {:6.1f} m H{:03.0f} {} {:.1f}     \r".format( gps_info['XCoor'],                                              gps_info['YCoor'],                                                    gps_info['speed']*1.852,                                              gps_info['altitude'],                                                 gps_info['course'], DELTA,
-            gps_info['dist']*1000
-        ) ,end='\r')
+        # print(' '+gps_info['fix']+gps_info['timex']+
+        #       " ({:6.4f},{:6.4f}){:6.1f} km/h {:6.1f} m H{:03.0f} {} {:.1f}     \r".format( gps_info['XCoor'],                                              gps_info['YCoor'],                                                    gps_info['speed']*1.852,                                              gps_info['altitude'],                                                 gps_info['course'], DELTA,
+        #     gps_info['dist']*1000
+        # ) ,end='\r')
  #   except:
 #        print("=== not all values ready to print ======")
         ##sys.stdout.flush()

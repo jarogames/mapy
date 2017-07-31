@@ -74,7 +74,7 @@ for ix in range(len(xbin)-1):
         totalm=totalm+1
         print( totalm,'.',xbin[ix], ybin[iy],  degpertile[15])
         
-m1 = StaticMap(256, 256, url_template='http://localhost:8900/{z}/{x}/{y}.png',fixzoom=zoom)
+m1 = StaticMap(256, 256, url_template='http://localhost:8900/{z}/{x}/{y}.png')
 Step=0.006
 maxmar=1
 total=0
@@ -84,8 +84,8 @@ for ix in range(len(xbin)-1):
         print( total,'/',totalm,'.',xbin[ix], ybin[iy] )
         XCoor,YCoor=(  xbin[ix], ybin[iy]  )
         mam=CircleMarker( (XCoor,YCoor),  'red', 5)
-        m1.add_marker(mam, maxmarkers=maxmar )
-        image=m1.render()
+        m1.add_marker(mam )
+        image=m1.render( zoom=zoom )
         #image=image.resize( (1000,600) )
         #if yrng%10:
         image.save('map.png')

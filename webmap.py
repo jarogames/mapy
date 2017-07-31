@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #from BaseHTTPServer import BaseHTTPRequestHandler,HTTPServer
 from http.server import BaseHTTPRequestHandler,HTTPServer
 from os import curdir, sep
@@ -59,12 +59,19 @@ class myHandler(BaseHTTPRequestHandler):
 				else:
 					print('....file doesnot exist ########################################')
 					whatiwo=self.path
-					if int( whatiwo.split('/')[1])>15:
-						url='http://a.tile.osm.org'+whatiwo
-#print("ZOOM=",whatiwo.split('/')[1])
-					else:
-						#url='http://a.tile.osm.org'
-						url='http://a.tile.komoot.de/komoot-2'+whatiwo
+                                        zomm=int( whatiwo.split('/')[1])
+                                        if (zomm==15) or(zomm==12) or(zomm==8) or(zomm==5):
+                                                url='http://a.tile.komoot.de/komoot-2'+whatiwo
+                                        else:
+                                                self.send_error(404,'File Not Found: %s' % self.path)
+                                                return
+                                        # for more that 15-komoot doesnt work
+					# if zomm>15:
+					# 	url='http://a.tile.osm.org'+whatiwo
+                                        #         #print("ZOOM=",whatiwo.split('/')[1])
+					# else:
+					# 	#url='http://a.tile.osm.org'
+					# 	url='http://a.tile.komoot.de/komoot-2'+whatiwo
 					makedir=os.path.dirname(self.path)
 					print('url=',url,'creating dir=', curdir+makedir)
 					if not os.path.exists(curdir+makedir):
