@@ -212,7 +212,7 @@ def get_dist_prec(lon2, lat2, lon1, lat1):
 ###############################
     
 
-def translate_gp_line():
+def translate_gps_line():
     global sock
     #    print(i,"/" , end="\r" )
     getsock()    
